@@ -21,7 +21,7 @@ add_executable(
 target_compile_definitions(
   vim
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 add_library(basic_sources "")
@@ -54,7 +54,7 @@ target_include_directories(
 target_compile_definitions(
   basic_sources
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 target_link_libraries(
@@ -90,7 +90,7 @@ target_include_directories(
 target_compile_definitions(
   extra_sources
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 target_link_libraries(

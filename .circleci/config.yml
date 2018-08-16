@@ -1,0 +1,54 @@
+version: 2
+
+variables:
+  ubuntu-1804: &ubuntu-1804
+    docker:
+      - image: devcafe/cmake-cookbook_circleci_ubuntu18.04
+        name: kujakubato
+        user: root
+    working_directory: ~/vim
+  setup: &setup
+    run:
+      name: Set up base system and Python dependencies
+      command: |
+        pipenv install --three
+  report: &report
+    run:
+      name: Report
+      command: |
+        pipenv run python --version
+  configure: &configure
+    run:
+      name: Configuring Vim
+      shell: /bin/bash
+      command: |
+        cmake -H. -Bbuild -DCMAKE_C_COMPILER=gcc -DFEATURES=huge
+  build: &build
+    run:
+      name: Building Vim
+      shell: /bin/bash
+      command: |
+        cmake --build build
+  test: &test
+    run:
+      name: Testing Vim
+      shell: /bin/bash
+      command: |
+        cmake --build build --target test
+
+jobs:
+  ubuntu:
+    <<: *ubuntu-1804
+    steps:
+      - checkout
+      - *setup
+      - *report
+      - *configure
+      - *build
+      - *test
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - ubuntu

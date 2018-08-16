@@ -39,6 +39,10 @@ function(generate_config_h)
 
   check_library_exists(tinfo tgetent "" HAVE_TGETENT)
 
+  if(NOT HAVE_TGETENT)
+    message(FATAL_ERROR "Could not find the tgetent() function. You need to install a terminal library; for example ncurses.")
+  endif()
+
   foreach(
     _header
     setjmp.h dirent.h

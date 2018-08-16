@@ -15,15 +15,15 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # if no features are set, default to "huge"
-if(NOT FEATURES)
-  set(FEATURES "huge")
-endif()
+set(FEATURES "huge" CACHE STRING
+  "FEATURES chosen by the user at CMake configure time")
 
 # make sure the selected features is a valid choice
 set(_available_features "tiny" "small" "normal" "big" "huge")
 if(NOT "${FEATURES}" IN_LIST _available_features)
   message(FATAL_ERROR "Unknown features: \"${FEATURES}\". Allowed values are: ${_available_features}.")
 endif()
+set_property(CACHE FEATURES PROPERTY STRINGS ${_available_features})
 
 # set default prefix path
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

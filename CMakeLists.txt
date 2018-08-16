@@ -25,12 +25,6 @@ if(NOT "${FEATURES}" IN_LIST _available_features)
 endif()
 set_property(CACHE FEATURES PROPERTY STRINGS ${_available_features})
 
-# set default prefix path
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "/usr/local/share/vim" CACHE PATH "Install path" FORCE)
-endif()
-message(STATUS "Project will be installed to ${CMAKE_INSTALL_PREFIX}")
-
 # use install directory variables as defined for gnu software
 include(GNUInstallDirs)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})

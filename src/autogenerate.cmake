@@ -93,6 +93,7 @@ function(generate_config_h)
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/config.h.cmake.in
     ${CMAKE_CURRENT_LIST_DIR}/auto/config.h
+    @ONLY
     )
 endfunction()
 
@@ -122,6 +123,7 @@ function(generate_pathdef_c)
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/pathdef.c.in
     ${CMAKE_CURRENT_LIST_DIR}/auto/pathdef.c
+    @ONLY
     )
 endfunction()
 

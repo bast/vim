@@ -120,7 +120,7 @@ if(X11_FOUND)
 endif()
 
 # a couple of more system libraries that the code requires
-foreach(_library Xt SM m tinfo acl gpm dl)
+foreach(_library IN ITEMS Xt SM m tinfo acl gpm dl)
   find_library(_${_library}_found ${_library} REQUIRED)
   if(_${_library}_found)
     target_link_libraries(

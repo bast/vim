@@ -23,7 +23,7 @@ function(generate_config_h)
   check_type_size("off_t" SIZEOF_OFF_T)
 
   foreach(
-    _function
+    _function IN ITEMS
     fchdir fchown fchmod fsync getcwd getpseudotty
     getpwent getpwnam getpwuid getrlimit gettimeofday getwd lstat
     memset mkdtemp nanosleep opendir putenv qsort readlink select setenv
@@ -44,7 +44,7 @@ function(generate_config_h)
   endif()
 
   foreach(
-    _header
+    _header IN ITEMS
     setjmp.h dirent.h
     stdint.h stdlib.h string.h
     sys/select.h sys/utsname.h termcap.h fcntl.h

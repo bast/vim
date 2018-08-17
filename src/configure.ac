@@ -11,7 +11,7 @@ AC_DEFINE(UNIX)
 AC_PROG_MAKE_SET
 
 dnl Checks for programs.
-AC_PROG_CC		dnl required by almost everything
+AC_PROG_CC_C99		dnl required by almost everything
 AC_PROG_CPP		dnl required by header file checks
 AC_PROGRAM_EGREP	dnl required by AC_EGREP_CPP
 AC_PROG_FGREP		dnl finds working grep -F
@@ -29,6 +29,39 @@ dnl in autoconf needs it, where it uses STDC_HEADERS.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 
+dnl Check that the C99 features that Vim uses are supported:
+if test x"$ac_cv_prog_cc_c99" != xno; then
+  dnl If the compiler doesn't explicitly support C99, then check
+  dnl for the specific features Vim uses
+
+  AC_TYPE_LONG_LONG_INT
+  if test "$ac_cv_type_long_long_int" = no; then
+    AC_MSG_FAILURE([Compiler does not support long long int])
+  fi
+
+  AC_MSG_CHECKING([if the compiler supports trailing commas])
+  trailing_commas=no
+  AC_TRY_COMPILE([], [
+    enum {
+      one,
+    };],
+    [AC_MSG_RESULT(yes); trailing_commas=yes],
+    [AC_MSG_RESULT(no)])
+  if test "$trailing_commas" = no; then
+    AC_MSG_FAILURE([Compiler does not support trailing comma in enum])
+  fi
+
+  AC_MSG_CHECKING([if the compiler supports C++ comments])
+  slash_comments=no
+  AC_TRY_COMPILE([],
+    [// C++ comments?],
+    [AC_MSG_RESULT(yes); slash_comments=yes],
+    [AC_MSG_RESULT(no)])
+  if test "$slash_comments" = no; then
+    AC_MSG_FAILURE([Compiler does not support C++ comments])
+  fi
+fi
+
 dnl Check for the flag that fails if stuff are missing.
 
 AC_MSG_CHECKING(--enable-fail-if-missing argument)
@@ -38,6 +71,9 @@ AC_ARG_ENABLE(fail_if_missing,
 	[fail_if_missing="yes"],
 	[fail_if_missing="no"])
 AC_MSG_RESULT($fail_if_missing)
+
+dnl Keep original value to check later.
+with_x_arg="$with_x"
 
 dnl Set default value for CFLAGS if none is defined or it's empty
 if test -z "$CFLAGS"; then
@@ -1117,7 +1153,15 @@ if test "$enable_pythoninterp" = "yes" -o "$enable_pythoninterp" = "dynamic"; th
   fi
 
   dnl -- find the python executable
-  AC_PATH_PROGS(vi_cv_path_python, python2 python)
+  AC_MSG_CHECKING(--with-python-command argument)
+  AC_SUBST(vi_cv_path_python)
+  AC_ARG_WITH(python-command, [  --with-python-command=NAME  name of the Python 2 command (default: python2 or python)],
+	vi_cv_path_python="$withval"; AC_MSG_RESULT($vi_cv_path_python),
+	AC_MSG_RESULT(no))
+
+  if test "X$vi_cv_path_python" = "X"; then
+    AC_PATH_PROGS(vi_cv_path_python, python2 python)
+  fi
   if test "X$vi_cv_path_python" != "X"; then
 
     dnl -- get its version number
@@ -1156,8 +1200,8 @@ if test "$enable_pythoninterp" = "yes" -o "$enable_pythoninterp" = "dynamic"; th
       dnl -- where the Python implementation library archives are
 
       AC_ARG_WITH(python-config-dir,
-	[  --with-python-config-dir=PATH  Python's config directory],
-	[ vi_cv_path_python_conf="${withval}" ] )
+	[  --with-python-config-dir=PATH  Python's config directory (deprecated)],
+	[ vi_cv_path_python_conf="${withval}"; have_python_config_dir=1 ] )
 
       AC_CACHE_CHECK(Python's configuration directory,vi_cv_path_python_conf,
       [
@@ -1211,11 +1255,7 @@ eof
 		  vi_cv_path_python_plibs="-F${python_PYTHONFRAMEWORKPREFIX} -framework Python"
 	      fi
 	    else
-	      if test "${vi_cv_var_python_version}" = "1.4"; then
-		  vi_cv_path_python_plibs="${PYTHON_CONFDIR}/libModules.a ${PYTHON_CONFDIR}/libPython.a ${PYTHON_CONFDIR}/libObjects.a ${PYTHON_CONFDIR}/libParser.a"
-	      else
-		  vi_cv_path_python_plibs="-L${PYTHON_CONFDIR} -lpython${vi_cv_var_python_version}"
-	      fi
+	      vi_cv_path_python_plibs="-L${PYTHON_CONFDIR} -lpython${vi_cv_var_python_version}"
 	      dnl -- Check if the path contained in python_LINKFORSHARED is
 	      dnl    usable for vim build. If not, make and try other
 	      dnl    candidates.
@@ -1251,16 +1291,17 @@ eof
 
 	PYTHON_LIBS="${vi_cv_path_python_plibs}"
 	if test "${vi_cv_path_python_pfx}" = "${vi_cv_path_python_epfx}"; then
-	  PYTHON_CFLAGS="-I${vi_cv_path_python_pfx}/include/python${vi_cv_var_python_version} -DPYTHON_HOME='\"${vi_cv_path_python_pfx}\"'"
+	  PYTHON_CFLAGS="-I${vi_cv_path_python_pfx}/include/python${vi_cv_var_python_version}"
 	else
-	  PYTHON_CFLAGS="-I${vi_cv_path_python_pfx}/include/python${vi_cv_var_python_version} -I${vi_cv_path_python_epfx}/include/python${vi_cv_var_python_version} -DPYTHON_HOME='\"${vi_cv_path_python_pfx}\"'"
+	  PYTHON_CFLAGS="-I${vi_cv_path_python_pfx}/include/python${vi_cv_var_python_version} -I${vi_cv_path_python_epfx}/include/python${vi_cv_var_python_version}"
+	fi
+	if test "X$have_python_config_dir" = "X1" -a "$enable_pythoninterp" = "dynamic"; then
+	  dnl Define PYTHON_HOME if --with-python-config-dir was used
+	  PYTHON_CFLAGS="${PYTHON_CFLAGS} -DPYTHON_HOME='\"${vi_cv_path_python_pfx}\"'"
+
 	fi
 	PYTHON_SRC="if_python.c"
 	PYTHON_OBJ="objects/if_python.o"
-	if test "${vi_cv_var_python_version}" = "1.4"; then
-	   PYTHON_OBJ="$PYTHON_OBJ objects/py_getpath.o"
-	fi
-    PYTHON_GETPATH_CFLAGS="-DPYTHONPATH='\"${vi_cv_path_pythonpath}\"' -DPREFIX='\"${vi_cv_path_python_pfx}\"' -DEXEC_PREFIX='\"${vi_cv_path_python_epfx}\"'"
 
 	dnl On FreeBSD linking with "-pthread" is required to use threads.
 	dnl _THREAD_SAFE must be used for compiling then.
@@ -1329,9 +1370,7 @@ eof
   fi
 fi
 
-AC_SUBST(PYTHON_CONFDIR)
 AC_SUBST(PYTHON_LIBS)
-AC_SUBST(PYTHON_GETPATH_CFLAGS)
 AC_SUBST(PYTHON_CFLAGS)
 AC_SUBST(PYTHON_SRC)
 AC_SUBST(PYTHON_OBJ)
@@ -1348,7 +1387,15 @@ if test "$enable_python3interp" = "yes" -o "$enable_python3interp" = "dynamic"; 
   fi
 
   dnl -- find the python3 executable
-  AC_PATH_PROGS(vi_cv_path_python3, python3 python)
+  AC_MSG_CHECKING(--with-python3-command argument)
+  AC_SUBST(vi_cv_path_python3)
+  AC_ARG_WITH(python3-command, [  --with-python3-command=NAME  name of the Python 3 command (default: python3 or python)],
+	vi_cv_path_python3="$withval"; AC_MSG_RESULT($vi_cv_path_python3),
+	AC_MSG_RESULT(no))
+
+  if test "X$vi_cv_path_python3" = "X"; then
+    AC_PATH_PROGS(vi_cv_path_python3, python3 python)
+  fi
   if test "X$vi_cv_path_python3" != "X"; then
 
     dnl -- get its version number
@@ -1398,8 +1445,8 @@ if test "$enable_python3interp" = "yes" -o "$enable_python3interp" = "dynamic"; 
       dnl -- where the Python implementation library archives are
   
       AC_ARG_WITH(python3-config-dir,
-       [  --with-python3-config-dir=PATH  Python's config directory],
-       [ vi_cv_path_python3_conf="${withval}" ] )
+       [  --with-python3-config-dir=PATH  Python's config directory (deprecated)],
+       [ vi_cv_path_python3_conf="${withval}"; have_python3_config_dir=1 ] )
   
       AC_CACHE_CHECK(Python's configuration directory,vi_cv_path_python3_conf,
       [
@@ -1460,10 +1507,14 @@ eof
 
         PYTHON3_LIBS="${vi_cv_path_python3_plibs}"
         if test "${vi_cv_path_python3_pfx}" = "${vi_cv_path_python3_epfx}"; then
-          PYTHON3_CFLAGS="-I${vi_cv_path_python3_pfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags} -DPYTHON3_HOME='L\"${vi_cv_path_python3_pfx}\"'"
+          PYTHON3_CFLAGS="-I${vi_cv_path_python3_pfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags}"
         else
-          PYTHON3_CFLAGS="-I${vi_cv_path_python3_pfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags} -I${vi_cv_path_python3_epfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags} -DPYTHON3_HOME='L\"${vi_cv_path_python3_pfx}\"'"
+          PYTHON3_CFLAGS="-I${vi_cv_path_python3_pfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags} -I${vi_cv_path_python3_epfx}/include/python${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags}"
         fi
+	if test "X$have_python3_config_dir" = "X1" -a "$enable_python3interp" = "dynamic"; then
+	  dnl Define PYTHON3_HOME if --with-python-config-dir was used
+	  PYTHON3_CFLAGS="${PYTHON3_CFLAGS}  -DPYTHON3_HOME='L\"${vi_cv_path_python3_pfx}\"'"
+	fi
         PYTHON3_SRC="if_python3.c"
         PYTHON3_OBJ="objects/if_python3.o"
   
@@ -1533,7 +1584,6 @@ eof
   fi
 fi
 
-AC_SUBST(PYTHON3_CONFDIR)
 AC_SUBST(PYTHON3_LIBS)
 AC_SUBST(PYTHON3_CFLAGS)
 AC_SUBST(PYTHON3_SRC)
@@ -1906,6 +1956,9 @@ if test "$enable_rubyinterp" = "yes" -o "$enable_rubyinterp" = "dynamic"; then
 	AC_DEFINE(FEAT_RUBY)
 	if test "$enable_rubyinterp" = "dynamic"; then
 	  libruby_soname=`$vi_cv_path_ruby -r rbconfig -e "puts $ruby_rbconfig::CONFIG[['LIBRUBY_ALIASES']].split[[0]]"`
+	  if test -z "$libruby_soname"; then
+	    libruby_soname=`$vi_cv_path_ruby -r rbconfig -e "puts $ruby_rbconfig::CONFIG[['LIBRUBY_SO']]"`
+	  fi
 	  AC_DEFINE(DYNAMIC_RUBY)
 	  RUBY_CFLAGS="-DDYNAMIC_RUBY_DLL=\\\"$libruby_soname\\\" -DDYNAMIC_RUBY_VER=$rubyversion $RUBY_CFLAGS"
 	  RUBY_LIBS=
@@ -2234,6 +2287,11 @@ else
     fi
 
   fi
+fi
+
+dnl Check if --with-x was given but it doesn't work.
+if test "x$with_x" = xno -a "x$with_x_arg" = xyes; then
+    AC_MSG_ERROR([could not configure X])
 fi
 
 test "x$with_x" = xno -a "x$MACOS_X" != "xyes" -a "x$QNX" != "xyes" && enable_gui=no
@@ -3662,7 +3720,7 @@ AC_CHECK_FUNCS(fchdir fchown fchmod fsync getcwd getpseudotty \
 	getpgid setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
 	sigprocmask sigvec strcasecmp strerror strftime stricmp strncasecmp \
 	strnicmp strpbrk strtol tgetent towlower towupper iswupper \
-	usleep utime utimes mblen ftruncate)
+	usleep utime utimes mblen ftruncate unsetenv)
 AC_FUNC_FSEEKO
 
 dnl define _LARGE_FILES, _FILE_OFFSET_BITS and _LARGEFILE_SOURCE when
@@ -4373,7 +4431,7 @@ dnl (e.g. ino_t and off_t), all of Vim's modules must be compiled with a
 dnl consistent value.  It's therefore safest to force the use of the define
 dnl if it's present in any of the *_CFLAGS variables.
 AC_MSG_CHECKING(whether we need to force -D_FILE_OFFSET_BITS=64)
-if echo "$CFLAGS $LUA_CFLAGS $MZSCHEME_CFLAGS $PERL_CFLAGS $PYTHON_GETPATH_CFLAGS $PYTHON_CFLAGS $PYTHON3_CFLAGS $TCL_CFLAGS $RUBY_CFLAGS $GTK_CFLAGS" | grep -q D_FILE_OFFSET_BITS 2>/dev/null; then
+if echo "$CFLAGS $LUA_CFLAGS $MZSCHEME_CFLAGS $PERL_CFLAGS $PYTHON_CFLAGS $PYTHON3_CFLAGS $TCL_CFLAGS $RUBY_CFLAGS $GTK_CFLAGS" | grep -q D_FILE_OFFSET_BITS 2>/dev/null; then
   AC_MSG_RESULT(yes)
   AC_DEFINE(_FILE_OFFSET_BITS, 64)
 else

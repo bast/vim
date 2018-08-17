@@ -293,7 +293,7 @@ save_re_pat(int idx, char_u *pat, int magic)
 	/* If 'hlsearch' set and search pat changed: need redraw. */
 	if (p_hls)
 	    redraw_all_later(SOME_VALID);
-	SET_NO_HLSEARCH(FALSE);
+	set_no_hlsearch(FALSE);
 #endif
     }
 }
@@ -336,7 +336,7 @@ restore_search_patterns(void)
 	spats[1] = saved_spats[1];
 #ifdef FEAT_SEARCH_EXTRA
 	last_idx = saved_last_idx;
-	SET_NO_HLSEARCH(saved_no_hlsearch);
+	set_no_hlsearch(saved_no_hlsearch);
 #endif
     }
 }
@@ -387,7 +387,7 @@ restore_last_search_pattern(void)
     set_vv_searchforward();
 # endif
     last_idx = saved_last_idx;
-    SET_NO_HLSEARCH(saved_no_hlsearch);
+    set_no_hlsearch(saved_no_hlsearch);
 }
 
     char_u *
@@ -1282,7 +1282,7 @@ do_search(
     if (no_hlsearch && !(options & SEARCH_KEEP))
     {
 	redraw_all_later(SOME_VALID);
-	SET_NO_HLSEARCH(FALSE);
+	set_no_hlsearch(FALSE);
     }
 #endif
 
@@ -2707,10 +2707,11 @@ showmatch(
 }
 
 /*
- * findsent(dir, count) - Find the start of the next sentence in direction
- * "dir" Sentences are supposed to end in ".", "!" or "?" followed by white
- * space or a line break. Also stop at an empty line.
- * Return OK if the next sentence was found.
+ * Find the start of the next sentence, searching in the direction specified
+ * by the "dir" argument.  The cursor is positioned on the start of the next
+ * sentence when found.  If the next sentence is found, return OK.  Return FAIL
+ * otherwise.  See ":h sentence" for the precise definition of a "sentence"
+ * text object.
  */
     int
 findsent(int dir, long count)
@@ -2758,26 +2759,25 @@ findsent(int dir, long count)
 	else if (dir == BACKWARD)
 	    decl(&pos);
 
-	/* go back to the previous non-blank char */
+	// go back to the previous non-white non-punctuation character
 	found_dot = FALSE;
-	while ((c = gchar_pos(&pos)) == ' ' || c == '\t' ||
-	     (dir == BACKWARD && vim_strchr((char_u *)".!?)]\"'", c) != NULL))
+	while (c = gchar_pos(&pos), VIM_ISWHITE(c)
+				|| vim_strchr((char_u *)".!?)]\"'", c) != NULL)
 	{
-	    if (vim_strchr((char_u *)".!?", c) != NULL)
-	    {
-		/* Only skip over a '.', '!' and '?' once. */
-		if (found_dot)
-		    break;
-		found_dot = TRUE;
-	    }
-	    if (decl(&pos) == -1)
+	    tpos = pos;
+	    if (decl(&tpos) == -1 || (LINEEMPTY(tpos.lnum) && dir == FORWARD))
 		break;
-	    /* when going forward: Stop in front of empty line */
-	    if (LINEEMPTY(pos.lnum) && dir == FORWARD)
-	    {
-		incl(&pos);
-		goto found;
-	    }
+
+	    if (found_dot)
+		break;
+	    if (vim_strchr((char_u *) ".!?", c) != NULL)
+		found_dot = TRUE;
+
+	    if (vim_strchr((char_u *) ")]\"'", c) != NULL
+		&& vim_strchr((char_u *) ".!?)]\"'", gchar_pos(&tpos)) == NULL)
+		break;
+
+	    decl(&pos);
 	}
 
 	/* remember the line where the search started */
@@ -4071,7 +4071,7 @@ again:
 	goto again;
     }
 
-    if (do_include || r < 1)
+    if (do_include)
     {
 	/* Include up to the '>'. */
 	while (*ml_get_cursor() != '>')
@@ -4106,9 +4106,10 @@ again:
 	    }
 	curwin->w_cursor = end_pos;
 
-	/* If we now have the same text as before reset "do_include" and try
-	 * again. */
-	if (EQUAL_POS(start_pos, old_start) && EQUAL_POS(end_pos, old_end))
+	// If we are in Visual mode and now have the same text as before set
+	// "do_include" and try again.
+	if (VIsual_active && EQUAL_POS(start_pos, old_start)
+						&& EQUAL_POS(end_pos, old_end))
 	{
 	    do_include = TRUE;
 	    curwin->w_cursor = old_start;
@@ -4665,6 +4666,7 @@ current_search(
 {
     pos_T	start_pos;	/* position before the pattern */
     pos_T	orig_pos;	/* position of the cursor at beginning */
+    pos_T	first_match;	/* position of first match */
     pos_T	pos;		/* position after the pattern */
     int		i;
     int		dir;
@@ -4758,6 +4760,8 @@ current_search(
 				ml_get(curwin->w_buffer->b_ml.ml_line_count));
 	    }
 	}
+	if (i == 0)
+	    first_match = pos;
 	p_ws = old_p_ws;
     }
 
@@ -4774,9 +4778,25 @@ current_search(
     /* move to match, except for zero-width matches, in which case, we are
      * already on the next match */
     if (!one_char)
-	result = searchit(curwin, curbuf, &pos, direction,
+    {
+	p_ws = FALSE;
+	for (i = 0; i < 2; i++)
+	{
+	    result = searchit(curwin, curbuf, &pos, direction,
 		    spats[last_idx].pat, 0L, flags | SEARCH_KEEP, RE_SEARCH, 0,
 								   NULL, NULL);
+	    /* Search successfull, break out from the loop */
+	    if (result)
+		break;
+	    /* search failed, try again from the last search position match */
+	    pos = first_match;
+	}
+    }
+
+    p_ws = old_p_ws;
+    /* not found */
+    if (!result)
+	return FAIL;
 
     if (!VIsual_active)
 	VIsual = start_pos;
@@ -5757,9 +5777,7 @@ read_viminfo_search_pattern(vir_T *virp, int force)
 		spats[idx].off.off = off;
 #ifdef FEAT_SEARCH_EXTRA
 		if (setlast)
-		{
-		    SET_NO_HLSEARCH(!hlsearch_on);
-		}
+		    set_no_hlsearch(!hlsearch_on);
 #endif
 	    }
 	}

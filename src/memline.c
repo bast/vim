@@ -8,8 +8,8 @@
  */
 
 /* for debugging */
-/* #define CHECK(c, s)	if (c) EMSG(s) */
-#define CHECK(c, s)
+/* #define CHECK(c, s)	do { if (c) EMSG(s); } while (0) */
+#define CHECK(c, s)	do { /**/ } while (0)
 
 /*
  * memline.c: Contains the functions for appending, deleting and changing the
@@ -262,9 +262,6 @@ static int fnamecmp_ino(char_u *, char_u *, long);
 #endif
 static void long_to_char(long, char_u *);
 static long char_to_long(char_u *);
-#if defined(UNIX) || defined(WIN3264)
-static char_u *make_percent_swname(char_u *dir, char_u *name);
-#endif
 #ifdef FEAT_CRYPT
 static cryptstate_T *ml_crypt_prepare(memfile_T *mfp, off_T offset, int reading);
 #endif
@@ -344,7 +341,7 @@ ml_open(buf_T *buf)
     b0p->b0_magic_int = (int)B0_MAGIC_INT;
     b0p->b0_magic_short = (short)B0_MAGIC_SHORT;
     b0p->b0_magic_char = B0_MAGIC_CHAR;
-    STRNCPY(b0p->b0_version, "VIM ", 4);
+    mch_memmove(b0p->b0_version, "VIM ", 4);
     STRNCPY(b0p->b0_version + 4, Version, 6);
     long_to_char((long)mfp->mf_page_size, b0p->b0_page_size);
 
@@ -2007,18 +2004,18 @@ recover_names(
     return file_count;
 }
 
-#if defined(UNIX) || defined(WIN3264)  /* Need _very_ long file names */
+#if defined(UNIX) || defined(WIN3264) || defined(PROTO)
 /*
+ * Need _very_ long file names.
  * Append the full path to name with path separators made into percent
  * signs, to dir. An unnamed buffer is handled as "" (<currentdir>/"")
  */
-    static char_u *
+    char_u *
 make_percent_swname(char_u *dir, char_u *name)
 {
-    char_u *d, *s, *f;
+    char_u *d = NULL, *s, *f;
 
-    f = fix_fname(name != NULL ? name : (char_u *) "");
-    d = NULL;
+    f = fix_fname(name != NULL ? name : (char_u *)"");
     if (f != NULL)
     {
 	s = alloc((unsigned)(STRLEN(f) + 1));
@@ -4070,8 +4067,6 @@ attention_message(
 }
 
 #if defined(FEAT_EVAL)
-static int do_swapexists(buf_T *buf, char_u *fname);
-
 /*
  * Trigger the SwapExists autocommands.
  * Returns a value for equivalent to do_dialog() (see below):
@@ -4648,8 +4643,8 @@ b0_magic_wrong(ZERO_BL *b0p)
  *		== 0   == 0	OK	FAIL	TRUE
  *
  * current file doesn't exist, inode for swap unknown, both file names not
- * available -> probably same file
- *		== 0   == 0    FAIL	FAIL	FALSE
+ * available -> compare file names
+ *		== 0   == 0    FAIL	FAIL	fname_c != fname_s
  *
  * Note that when the ino_t is 64 bits, only the last 32 will be used.  This
  * can't be changed without making the block 0 incompatible with 32 bit
@@ -4693,14 +4688,15 @@ fnamecmp_ino(
     retval_c = vim_FullName(fname_c, buf_c, MAXPATHL, TRUE);
     retval_s = vim_FullName(fname_s, buf_s, MAXPATHL, TRUE);
     if (retval_c == OK && retval_s == OK)
-	return (STRCMP(buf_c, buf_s) != 0);
+	return STRCMP(buf_c, buf_s) != 0;
 
     /*
      * Can't compare inodes or file names, guess that the files are different,
-     * unless both appear not to exist at all.
+     * unless both appear not to exist at all, then compare with the file name
+     * in the swap file.
      */
     if (ino_s == 0 && ino_c == 0 && retval_c == FAIL && retval_s == FAIL)
-	return FALSE;
+	return STRCMP(fname_c, fname_s) != 0;
     return TRUE;
 }
 #endif /* CHECK_INODE */

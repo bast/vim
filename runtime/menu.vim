@@ -2,7 +2,7 @@
 " You can also use this as a start for your own set of menus.
 "
 " Maintainer:	Bram Moolenaar <Bram@vim.org>
-" Last Change:	2017 Nov 09
+" Last Change:	2018 May 17
 
 " Note that ":an" (short for ":anoremenu") is often used to make a menu work
 " in all modes and avoid side effects from mappings defined by the user.
@@ -55,6 +55,13 @@ if exists("v:lang") || &langmenu != ""
       " (e.g. find menu_de_de.iso_8859-1.vim if s:lang == de_DE).
       let s:lang = substitute(s:lang, '\.[^.]*', "", "")
       exe "runtime! lang/menu_" . s:lang . "[^a-z]*vim"
+
+      if !exists("did_menu_trans") && s:lang =~ '_'
+	" If the language includes a region try matching without that region.
+	" (e.g. find menu_de.vim if s:lang == de_DE).
+	let langonly = substitute(s:lang, '_.*', "", "")
+	exe "runtime! lang/menu_" . langonly . "[^a-z]*vim"
+      endif
 
       if !exists("did_menu_trans") && strlen($LANG) > 1 && s:lang !~ '^en_us'
 	" On windows locale names are complicated, try using $LANG, it might
@@ -809,7 +816,7 @@ func! s:BMMunge(fname, bnum)
   let name = a:fname
   if name == ''
     if !exists("g:menutrans_no_file")
-      let g:menutrans_no_file = "[No file]"
+      let g:menutrans_no_file = "[No Name]"
     endif
     let name = g:menutrans_no_file
   else
@@ -946,7 +953,10 @@ if has("spell")
 	let s:suglist = spellsuggest(w, 10)
       endif
       if len(s:suglist) > 0
-	let s:changeitem = 'Change\ "' . escape(w, ' .'). '"\ to'
+	if !exists("g:menutrans_spell_change_ARG_to")
+	  let g:menutrans_spell_change_ARG_to = 'Change\ "%s"\ to'
+	endif
+	let s:changeitem = printf(g:menutrans_spell_change_ARG_to, escape(w, ' .'))
 	let s:fromword = w
 	let pri = 1
 	" set 'cpo' to include the <CR>
@@ -958,10 +968,16 @@ if has("spell")
 	  let pri += 1
 	endfor
 
-	let s:additem = 'Add\ "' . escape(w, ' .') . '"\ to\ Word\ List'
+	if !exists("g:menutrans_spell_add_ARG_to_word_list")
+	  let g:menutrans_spell_add_ARG_to_word_list = 'Add\ "%s"\ to\ Word\ List'
+	endif
+	let s:additem = printf(g:menutrans_spell_add_ARG_to_word_list, escape(w, ' .'))
 	exe 'anoremenu 1.6 PopUp.' . s:additem . ' :spellgood ' . w . '<CR>'
 
-	let s:ignoreitem = 'Ignore\ "' . escape(w, ' .') . '"'
+	if !exists("g:menutrans_spell_ignore_ARG")
+	  let g:menutrans_spell_ignore_ARG = 'Ignore\ "%s"'
+	endif
+	let s:ignoreitem = printf(g:menutrans_spell_ignore_ARG, escape(w, ' .'))
 	exe 'anoremenu 1.7 PopUp.' . s:ignoreitem . ' :spellgood! ' . w . '<CR>'
 
 	anoremenu 1.8 PopUp.-SpellSep- :

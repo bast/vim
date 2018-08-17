@@ -1,7 +1,7 @@
 " These commands create the option window.
 "
 " Maintainer:	Bram Moolenaar <Bram@vim.org>
-" Last Change:	2018 Feb 27
+" Last Change:	2018 May 15
 
 " If there already is an option window, jump to that one.
 let buf = bufnr('option-window')
@@ -325,7 +325,8 @@ call <SID>OptionL("scr")
 call append("$", "scrolloff\tnumber of screen lines to show around the cursor")
 call append("$", " \tset so=" . &so)
 call append("$", "wrap\tlong lines wrap")
-call <SID>BinOptionG("wrap", &wrap)
+call append("$", "\t(local to window)")
+call <SID>BinOptionL("wrap")
 call append("$", "linebreak\twrap long lines at a character in 'breakat'")
 call append("$", "\t(local to window)")
 call <SID>BinOptionL("lbr")
@@ -506,12 +507,15 @@ if has("cursorbind")
   call <SID>BinOptionL("crb")
 endif
 if has("terminal")
-  call append("$", "termsize\tsize of a terminal window")
+  call append("$", "termwinsize\tsize of a terminal window")
   call append("$", "\t(local to window)")
-  call <SID>OptionL("tms")
-  call append("$", "termkey\tkey that precedes Vim commands in a terminal window")
+  call <SID>OptionL("tws")
+  call append("$", "termwinkey\tkey that precedes Vim commands in a terminal window")
   call append("$", "\t(local to window)")
-  call <SID>OptionL("tk")
+  call <SID>OptionL("twk")
+  call append("$", "termwinscroll\tmax number of lines to keep for scrollback in a terminal window")
+  call append("$", "\t(local to window)")
+  call <SID>OptionL("twsl")
   if exists("&winptydll")
     call append("$", "winptydll\tname of the winpty dynamic library")
     call <SID>OptionG("winptydll", &winptydll)
@@ -852,6 +856,14 @@ call <SID>OptionL("ts")
 call append("$", "shiftwidth\tnumber of spaces used for each step of (auto)indent")
 call append("$", "\t(local to buffer)")
 call <SID>OptionL("sw")
+if has("vartabs")
+  call append("$", "vartabstop\tlist of number of spaces a tab counts for")
+  call append("$", "\t(local to buffer)")
+  call <SID>OptionL("vts")
+  call append("$", "varsofttabstop\tlist of number of spaces a soft tabsstop counts for")
+  call append("$", "\t(local to buffer)")
+  call <SID>OptionL("vsts")
+endif
 call append("$", "smarttab\ta <Tab> in an indent inserts 'shiftwidth' spaces")
 call <SID>BinOptionG("sta", &sta)
 call append("$", "softtabstop\tif non-zero, number of spaces to insert for a <Tab>")

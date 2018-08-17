@@ -1,4 +1,4 @@
-*os_390.txt*    For Vim version 8.0.  Last change: 2016 Feb 27
+*os_390.txt*    For Vim version 8.1.  Last change: 2016 Feb 27
 
 
 		  VIM REFERENCE MANUAL	  by Ralf Schandl
@@ -131,4 +131,4 @@ Also look at:
 
 
 ------------------------------------------------------------------------------
- vim:tw=78:fo=tcq2:ts=8:ft=help:norl:
+ vim:tw=78:fo=tcq2:ts=8:noet:ft=help:norl:

@@ -286,6 +286,8 @@ typedef int LPNMHDR;
 typedef int LONG;
 typedef int WNDPROC;
 typedef int UINT_PTR;
+typedef int COLORREF;
+typedef int HCURSOR;
 #endif
 
 #ifndef GET_X_LPARAM
@@ -494,9 +496,11 @@ static int	s_getting_focus = FALSE;
 static int	s_x_pending;
 static int	s_y_pending;
 static UINT	s_kFlags_pending;
-static UINT	s_wait_timer = 0;   /* Timer for get char from user */
+static UINT	s_wait_timer = 0;	  // Timer for get char from user
 static int	s_timed_out = FALSE;
-static int	dead_key = 0;	/* 0: no dead key, 1: dead key pressed */
+static int	dead_key = 0;		  // 0: no dead key, 1: dead key pressed
+static UINT	surrogate_pending_ch = 0; // 0: no surrogate pending,
+					  // else a high surrogate
 
 #ifdef FEAT_BEVAL_GUI
 /* balloon-eval WM_NOTIFY_HANDLER */
@@ -708,6 +712,12 @@ _OnDeadChar(
  * Convert Unicode character "ch" to bytes in "string[slen]".
  * When "had_alt" is TRUE the ALT key was included in "ch".
  * Return the length.
+ * Because the Windows API uses UTF-16, we have to deal with surrogate
+ * pairs; this is where we choose to deal with them: if "ch" is a high
+ * surrogate, it will be stored, and the length returned will be zero; the next
+ * char_to_string call will then include the high surrogate, decoding the pair
+ * of UTF-16 code units to a single Unicode code point, presuming it is the
+ * matching low surrogate.
  */
     static int
 char_to_string(int ch, char_u *string, int slen, int had_alt)
@@ -718,8 +728,27 @@ char_to_string(int ch, char_u *string, int slen, int had_alt)
     WCHAR	wstring[2];
     char_u	*ws = NULL;
 
-    wstring[0] = ch;
-    len = 1;
+    if (surrogate_pending_ch != 0)
+    {
+	/* We don't guarantee ch is a low surrogate to match the high surrogate
+	 * we already have; it should be, but if it isn't, tough luck. */
+	wstring[0] = surrogate_pending_ch;
+	wstring[1] = ch;
+	surrogate_pending_ch = 0;
+	len = 2;
+    }
+    else if (ch >= 0xD800 && ch <= 0xDBFF)	/* high surrogate */
+    {
+	/* We don't have the entire code point yet, only the first UTF-16 code
+	 * unit; so just remember it and use it in the next call. */
+	surrogate_pending_ch = ch;
+	return 0;
+    }
+    else
+    {
+	wstring[0] = ch;
+	len = 1;
+    }
 
     /* "ch" is a UTF-16 character.  Convert it to a string of bytes.  When
      * "enc_codepage" is non-zero use the standard Win32 function,
@@ -743,7 +772,6 @@ char_to_string(int ch, char_u *string, int slen, int had_alt)
     }
     else
     {
-	len = 1;
 	ws = utf16_to_enc(wstring, &len);
 	if (ws == NULL)
 	    len = 0;
@@ -2792,8 +2820,7 @@ gui_mch_find_dialog(exarg_T *eap)
 		s_findrep_hwnd = FindText((LPFINDREPLACE) &s_findrep_struct);
 	}
 
-	set_window_title(s_findrep_hwnd,
-			       _("Find string (use '\\\\' to find  a '\\')"));
+	set_window_title(s_findrep_hwnd, _("Find string"));
 	(void)SetFocus(s_findrep_hwnd);
 
 	s_findrep_is_find = TRUE;
@@ -2827,8 +2854,7 @@ gui_mch_replace_dialog(exarg_T *eap)
 					   (LPFINDREPLACE) &s_findrep_struct);
 	}
 
-	set_window_title(s_findrep_hwnd,
-			    _("Find & Replace (use '\\\\' to find  a '\\')"));
+	set_window_title(s_findrep_hwnd, _("Find & Replace"));
 	(void)SetFocus(s_findrep_hwnd);
 
 	s_findrep_is_find = FALSE;
@@ -8894,15 +8920,12 @@ gui_mch_create_beval_area(
 	return NULL;
     }
 
-    beval = (BalloonEval *)alloc(sizeof(BalloonEval));
+    beval = (BalloonEval *)alloc_clear(sizeof(BalloonEval));
     if (beval != NULL)
     {
 	beval->target = s_textArea;
-	beval->balloon = NULL;
 
 	beval->showState = ShS_NEUTRAL;
-	beval->x = 0;
-	beval->y = 0;
 	beval->msg = mesg;
 	beval->msgCB = mesgCB;
 	beval->clientData = clientData;
@@ -8912,7 +8935,6 @@ gui_mch_create_beval_area(
 
 	if (p_beval)
 	    gui_mch_enable_beval_area(beval);
-
     }
     return beval;
 }
@@ -8962,6 +8984,10 @@ TrackUserActivity(UINT uMsg)
     void
 gui_mch_destroy_beval_area(BalloonEval *beval)
 {
+#ifdef FEAT_VARTABS
+    if (beval->vts)
+	vim_free(beval->vts);
+#endif
     vim_free(beval);
 }
 #endif /* FEAT_BEVAL_GUI */

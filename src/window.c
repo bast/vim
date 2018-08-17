@@ -99,9 +99,16 @@ do_window(
 	Prenum1 = Prenum;
 
 #ifdef FEAT_CMDWIN
-# define CHECK_CMDWIN if (cmdwin_type != 0) { EMSG(_(e_cmdwin)); break; }
+# define CHECK_CMDWIN \
+    do { \
+	if (cmdwin_type != 0) \
+	{ \
+	    EMSG(_(e_cmdwin)); \
+	    return; \
+	} \
+    } while (0)
 #else
-# define CHECK_CMDWIN
+# define CHECK_CMDWIN do { /**/ } while (0)
 #endif
 
     switch (nchar)
@@ -110,7 +117,7 @@ do_window(
     case 'S':
     case Ctrl_S:
     case 's':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 #ifdef FEAT_QUICKFIX
 		/* When splitting the quickfix window open a new buffer in it,
@@ -127,7 +134,7 @@ do_window(
 /* split current window in two parts, vertically */
     case Ctrl_V:
     case 'v':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 #ifdef FEAT_QUICKFIX
 		/* When splitting the quickfix window open a new buffer in it,
@@ -144,7 +151,7 @@ do_window(
 /* split current window and edit alternate file */
     case Ctrl_HAT:
     case '^':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 		cmd_with_count("split #", cbuf, sizeof(cbuf), Prenum);
 		do_cmdline_cmd(cbuf);
@@ -153,7 +160,7 @@ do_window(
 /* open new window */
     case Ctrl_N:
     case 'n':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 #ifdef FEAT_QUICKFIX
 newwindow:
@@ -191,7 +198,7 @@ newwindow:
 /* close preview window */
     case Ctrl_Z:
     case 'z':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 		do_cmdline_cmd((char_u *)"pclose");
 		break;
@@ -211,7 +218,7 @@ newwindow:
 /* close all but current window */
     case Ctrl_O:
     case 'o':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 		cmd_with_count("only", cbuf, sizeof(cbuf), Prenum);
 		do_cmdline_cmd(cbuf);
@@ -222,7 +229,7 @@ newwindow:
     case 'w':
 /* cursor to previous window with wrap around */
     case 'W':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		if (ONE_WINDOW && Prenum != 1)	/* just one window */
 		    beep_flush();
 		else
@@ -260,7 +267,7 @@ newwindow:
     case 'j':
     case K_DOWN:
     case Ctrl_J:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_goto_ver(FALSE, Prenum1);
 		break;
 
@@ -268,7 +275,7 @@ newwindow:
     case 'k':
     case K_UP:
     case Ctrl_K:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_goto_ver(TRUE, Prenum1);
 		break;
 
@@ -277,7 +284,7 @@ newwindow:
     case K_LEFT:
     case Ctrl_H:
     case K_BS:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_goto_hor(TRUE, Prenum1);
 		break;
 
@@ -285,7 +292,7 @@ newwindow:
     case 'l':
     case K_RIGHT:
     case Ctrl_L:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_goto_hor(FALSE, Prenum1);
 		break;
 
@@ -338,21 +345,21 @@ newwindow:
 /* exchange current and next window */
     case 'x':
     case Ctrl_X:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_exchange(Prenum);
 		break;
 
 /* rotate windows downwards */
     case Ctrl_R:
     case 'r':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 		win_rotate(FALSE, (int)Prenum1);    /* downwards */
 		break;
 
 /* rotate windows upwards */
     case 'R':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		reset_VIsual_and_resel();	/* stop Visual mode */
 		win_rotate(TRUE, (int)Prenum1);	    /* upwards */
 		break;
@@ -362,7 +369,7 @@ newwindow:
     case 'J':
     case 'H':
     case 'L':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		win_totop((int)Prenum,
 			((nchar == 'H' || nchar == 'L') ? WSP_VERT : 0)
 			| ((nchar == 'H' || nchar == 'K') ? WSP_TOP : WSP_BOT));
@@ -428,7 +435,7 @@ newwindow:
 /* jump to tag and split window if tag exists (in preview window) */
 #if defined(FEAT_QUICKFIX)
     case '}':
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		if (Prenum)
 		    g_do_tagpreview = Prenum;
 		else
@@ -437,7 +444,7 @@ newwindow:
 		/* FALLTHROUGH */
     case ']':
     case Ctrl_RSB:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		/* keep Visual mode, can select words to use as a tag */
 		if (Prenum)
 		    postponed_split = Prenum;
@@ -459,7 +466,7 @@ newwindow:
     case 'F':
     case Ctrl_F:
 wingotofile:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 
 		ptr = grab_file_name(Prenum1, &lnum);
 		if (ptr != NULL)
@@ -503,7 +510,7 @@ wingotofile:
 		/* FALLTHROUGH */
     case 'd':			    /* Go to definition, using 'define' */
     case Ctrl_D:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 		if ((len = find_ident_under_cursor(&ptr, FIND_IDENT)) == 0)
 		    break;
 		find_pattern_in_path(ptr, 0, len, TRUE,
@@ -513,28 +520,19 @@ wingotofile:
 		break;
 #endif
 
+/* Quickfix window only: view the result under the cursor in a new split. */
+#if defined(FEAT_QUICKFIX)
     case K_KENTER:
     case CAR:
-#if defined(FEAT_QUICKFIX)
-		/*
-		 * In a quickfix window a <CR> jumps to the error under the
-		 * cursor in a new window.
-		 */
 		if (bt_quickfix(curbuf))
-		{
-		    sprintf((char *)cbuf, "split +%ld%s",
-				(long)curwin->w_cursor.lnum,
-				(curwin->w_llist_ref == NULL) ? "cc" : "ll");
-		    do_cmdline_cmd(cbuf);
-		}
-#endif
+		    qf_view_result(TRUE);
 		break;
-
+#endif
 
 /* CTRL-W g  extended commands */
     case 'g':
     case Ctrl_G:
-		CHECK_CMDWIN
+		CHECK_CMDWIN;
 #ifdef USE_ON_FLY_SCROLL
 		dont_scroll = TRUE;		/* disallow scrolling here */
 #endif
@@ -771,6 +769,7 @@ win_split_ins(
     int		before;
     int		minheight;
     int		wmh1;
+    int		did_set_fraction = FALSE;
 
     if (flags & WSP_TOP)
 	oldwin = firstwin;
@@ -952,6 +951,11 @@ win_split_ins(
 	 * instead, if possible. */
 	if (oldwin->w_p_wfh)
 	{
+	    /* Set w_fraction now so that the cursor keeps the same relative
+	     * vertical position using the old height. */
+	    set_fraction(oldwin);
+	    did_set_fraction = TRUE;
+
 	    win_setheight_win(oldwin->w_height + new_size + STATUS_HEIGHT,
 								      oldwin);
 	    oldwin_height = oldwin->w_height;
@@ -1081,7 +1085,8 @@ win_split_ins(
 
     /* Set w_fraction now so that the cursor keeps the same relative
      * vertical position. */
-    set_fraction(oldwin);
+    if (!did_set_fraction)
+	set_fraction(oldwin);
     wp->w_fraction = oldwin->w_fraction;
 
     if (flags & WSP_VERT)
@@ -2089,6 +2094,50 @@ win_equal_rec(
     }
 }
 
+#ifdef FEAT_JOB_CHANNEL
+    static void
+leaving_window(win_T *win)
+{
+    // Only matters for a prompt window.
+    if (!bt_prompt(win->w_buffer))
+	return;
+
+    // When leaving a prompt window stop Insert mode and perhaps restart
+    // it when entering that window again.
+    win->w_buffer->b_prompt_insert = restart_edit;
+    if (restart_edit != 0 && mode_displayed)
+	clear_cmdline = TRUE;		/* unshow mode later */
+    restart_edit = NUL;
+
+    // When leaving the window (or closing the window) was done from a
+    // callback we need to break out of the Insert mode loop and restart Insert
+    // mode when entering the window again.
+    if (State & INSERT)
+    {
+	stop_insert_mode = TRUE;
+	if (win->w_buffer->b_prompt_insert == NUL)
+	    win->w_buffer->b_prompt_insert = 'A';
+    }
+}
+
+    static void
+entering_window(win_T *win)
+{
+    // Only matters for a prompt window.
+    if (!bt_prompt(win->w_buffer))
+	return;
+
+    // When switching to a prompt buffer that was in Insert mode, don't stop
+    // Insert mode, it may have been set in leaving_window().
+    if (win->w_buffer->b_prompt_insert != NUL)
+	stop_insert_mode = FALSE;
+
+    // When entering the prompt window restart Insert mode if we were in Insert
+    // mode when we left it.
+    restart_edit = win->w_buffer->b_prompt_insert;
+}
+#endif
+
 /*
  * Close all windows for buffer "buf".
  */
@@ -2217,6 +2266,9 @@ close_last_window_tabpage(
 	    if (h != tabline_height())
 		shell_new_rows();
 	}
+#ifdef FEAT_JOB_CHANNEL
+	entering_window(curwin);
+#endif
 	/* Since goto_tabpage_tp above did not trigger *Enter autocommands, do
 	 * that now. */
 	apply_autocmds(EVENT_TABCLOSED, NULL, NULL, FALSE, curbuf);
@@ -2282,6 +2334,9 @@ win_close(win_T *win, int free_buf)
 
     if (win == curwin)
     {
+#ifdef FEAT_JOB_CHANNEL
+	leaving_window(curwin);
+#endif
 	/*
 	 * Guess which window is going to be the new current window.
 	 * This may change because of the autocommands (sigh).
@@ -2726,12 +2781,14 @@ winframe_remove(
 }
 
 /*
- * Find out which frame is going to get the freed up space when "win" is
- * closed.
- * if 'splitbelow'/'splitleft' the space goes to the window above/left.
- * if 'nosplitbelow'/'nosplitleft' the space goes to the window below/right.
- * This makes opening a window and closing it immediately keep the same window
- * layout.
+ * Return a pointer to the frame that will receive the empty screen space that
+ * is left over after "win" is closed.
+ *
+ * If 'splitbelow' or 'splitright' is set, the space goes above or to the left
+ * by default.  Otherwise, the free space goes below or to the right.  The
+ * result is that opening a window and then immediately closing it will
+ * preserve the initial window layout.  The 'wfh' and 'wfw' settings are
+ * respected when possible.
  */
     static frame_T *
 win_altframe(
@@ -2739,20 +2796,40 @@ win_altframe(
     tabpage_T	*tp)		/* tab page "win" is in, NULL for current */
 {
     frame_T	*frp;
-    int		b;
+    frame_T	*other_fr, *target_fr;
 
     if (tp == NULL ? ONE_WINDOW : tp->tp_firstwin == tp->tp_lastwin)
-	/* Last window in this tab page, will go to next tab page. */
 	return alt_tabpage()->tp_curwin->w_frame;
 
     frp = win->w_frame;
-    if (frp->fr_parent != NULL && frp->fr_parent->fr_layout == FR_ROW)
-	b = p_spr;
-    else
-	b = p_sb;
-    if ((!b && frp->fr_next != NULL) || frp->fr_prev == NULL)
+
+    if (frp->fr_prev == NULL)
 	return frp->fr_next;
-    return frp->fr_prev;
+    if (frp->fr_next == NULL)
+	return frp->fr_prev;
+
+    target_fr = frp->fr_next;
+    other_fr  = frp->fr_prev;
+    if (p_spr || p_sb)
+    {
+	target_fr = frp->fr_prev;
+	other_fr  = frp->fr_next;
+    }
+
+    /* If 'wfh' or 'wfw' is set for the target and not for the alternate
+     * window, reverse the selection. */
+    if (frp->fr_parent != NULL && frp->fr_parent->fr_layout == FR_ROW)
+    {
+	if (frame_fixed_width(target_fr) && !frame_fixed_width(other_fr))
+	    target_fr = other_fr;
+    }
+    else
+    {
+	if (frame_fixed_height(target_fr) && !frame_fixed_height(other_fr))
+	    target_fr = other_fr;
+    }
+
+    return target_fr;
 }
 
 /*
@@ -3613,6 +3690,9 @@ win_new_tabpage(int after)
 	 * scrollbars.  Have to update them anyway. */
 	gui_may_update_scrollbars();
 #endif
+#ifdef FEAT_JOB_CHANNEL
+	entering_window(curwin);
+#endif
 
 	redraw_all_later(CLEAR);
 	apply_autocmds(EVENT_WINNEW, NULL, NULL, FALSE, curbuf);
@@ -3786,6 +3866,9 @@ leave_tabpage(
 {
     tabpage_T	*tp = curtab;
 
+#ifdef FEAT_JOB_CHANNEL
+    leaving_window(curwin);
+#endif
     reset_VIsual_and_resel();	/* stop Visual mode */
     if (trigger_leave_autocmds)
     {
@@ -4273,14 +4356,19 @@ win_enter_ext(
     win_T	*wp,
     int		undo_sync,
     int		curwin_invalid,
-    int		trigger_new_autocmds UNUSED,
-    int		trigger_enter_autocmds UNUSED,
-    int		trigger_leave_autocmds UNUSED)
+    int		trigger_new_autocmds,
+    int		trigger_enter_autocmds,
+    int		trigger_leave_autocmds)
 {
     int		other_buffer = FALSE;
 
     if (wp == curwin && !curwin_invalid)	/* nothing to do */
 	return;
+
+#ifdef FEAT_JOB_CHANNEL
+    if (!curwin_invalid)
+	leaving_window(curwin);
+#endif
 
     if (!curwin_invalid && trigger_leave_autocmds)
     {
@@ -4353,6 +4441,9 @@ win_enter_ext(
 	shorten_fnames(TRUE);
     }
 
+#ifdef FEAT_JOB_CHANNEL
+    entering_window(curwin);
+#endif
     if (trigger_new_autocmds)
 	apply_autocmds(EVENT_WINNEW, NULL, NULL, FALSE, curbuf);
     if (trigger_enter_autocmds)
@@ -4385,7 +4476,7 @@ win_enter_ext(
 #endif
 
     /* Change directories when the 'acd' option is set. */
-    DO_AUTOCHDIR
+    DO_AUTOCHDIR;
 }
 
 
@@ -5332,25 +5423,49 @@ frame_setwidth(frame_T *curfrp, int width)
 }
 
 /*
- * Check 'winminheight' for a valid value.
+ * Check 'winminheight' for a valid value and reduce it if needed.
  */
     void
 win_setminheight(void)
 {
     int		room;
+    int		needed;
     int		first = TRUE;
-    win_T	*wp;
 
-    /* loop until there is a 'winminheight' that is possible */
+    // loop until there is a 'winminheight' that is possible
     while (p_wmh > 0)
     {
-	/* TODO: handle vertical splits */
-	room = -p_wh;
-	FOR_ALL_WINDOWS(wp)
-	    room += VISIBLE_HEIGHT(wp) - p_wmh;
-	if (room >= 0)
+	room = Rows - p_ch;
+	needed = frame_minheight(topframe, NULL);
+	if (room >= needed)
 	    break;
 	--p_wmh;
+	if (first)
+	{
+	    EMSG(_(e_noroom));
+	    first = FALSE;
+	}
+    }
+}
+
+/*
+ * Check 'winminwidth' for a valid value and reduce it if needed.
+ */
+    void
+win_setminwidth(void)
+{
+    int		room;
+    int		needed;
+    int		first = TRUE;
+
+    // loop until there is a 'winminheight' that is possible
+    while (p_wmw > 0)
+    {
+	room = Columns;
+	needed = frame_minwidth(topframe, NULL);
+	if (room >= needed)
+	    break;
+	--p_wmw;
 	if (first)
 	{
 	    EMSG(_(e_noroom));

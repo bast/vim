@@ -124,7 +124,10 @@ func RunTheTest(test)
     exe 'call ' . a:test
   else
     try
+      let s:test = a:test
+      au VimLeavePre * call EarlyExit(s:test)
       exe 'call ' . a:test
+      au! VimLeavePre
     catch /^\cskipped/
       call add(s:messages, '    Skipped')
       call add(s:skipped, 'SKIPPED ' . a:test . ': ' . substitute(v:exception, '^\S*\s\+', '',  ''))
@@ -174,6 +177,15 @@ func AfterTheTest()
   endif
 endfunc
 
+func EarlyExit(test)
+  " It's OK for the test we use to test the quit detection.
+  if a:test != 'Test_zz_quit_detected()'
+    call add(v:errors, 'Test caused Vim to exit: ' . a:test)
+  endif
+
+  call FinishTesting()
+endfunc
+
 " This function can be called by a test if it wants to abort testing.
 func FinishTesting()
   call AfterTheTest()
@@ -199,7 +211,11 @@ func FinishTesting()
     write
   endif
 
-  let message = 'Executed ' . s:done . (s:done > 1 ? ' tests' : ' test')
+  if s:done == 0
+    let message = 'NO tests executed'
+  else
+    let message = 'Executed ' . s:done . (s:done > 1 ? ' tests' : ' test')
+  endif
   echo message
   call add(s:messages, message)
   if s:fail > 0

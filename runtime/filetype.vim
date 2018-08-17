@@ -1,7 +1,7 @@
 " Vim support file to detect file types
 "
 " Maintainer:	Bram Moolenaar <Bram@vim.org>
-" Last Change:	2018 Jan 28
+" Last Change:	2018 May 04
 
 " Listen very carefully, I will say this only once
 if exists("did_load_filetypes")
@@ -429,6 +429,13 @@ au BufNewFile,BufRead control
 	\|   setf debcontrol
 	\| endif
 
+" Debian Copyright
+au BufNewFile,BufRead */debian/copyright	setf debcopyright
+au BufNewFile,BufRead copyright
+	\  if getline(1) =~ '^Format:'
+	\|   setf debcopyright
+	\| endif
+
 " Debian Sources.list
 au BufNewFile,BufRead */etc/apt/sources.list		setf debsources
 au BufNewFile,BufRead */etc/apt/sources.list.d/*.list	setf debsources
@@ -579,7 +586,7 @@ au BufNewFile,BufRead auto.master		setf conf
 au BufNewFile,BufRead *.mas,*.master		setf master
 
 " Forth
-au BufNewFile,BufRead *.fs,*.ft			setf forth
+au BufNewFile,BufRead *.fs,*.ft,*.fth		setf forth
 
 " Reva Forth
 au BufNewFile,BufRead *.frt			setf reva
@@ -1455,7 +1462,7 @@ au BufNewFile,BufRead sgml.catalog*		call s:StarSetf('catalog')
 
 " Shell scripts (sh, ksh, bash, bash2, csh); Allow .profile_foo etc.
 " Gentoo ebuilds and Arch Linux PKGBUILDs are actually bash scripts
-au BufNewFile,BufRead .bashrc*,bashrc,bash.bashrc,.bash[_-]profile*,.bash[_-]logout*,.bash[_-]aliases*,*.bash,*/{,.}bash[_-]completion{,.d,.sh}{,/*},*.ebuild,*.eclass,PKGBUILD* call dist#ft#SetFileTypeSH("bash")
+au BufNewFile,BufRead .bashrc*,bashrc,bash.bashrc,.bash[_-]profile*,.bash[_-]logout*,.bash[_-]aliases*,bash-fc[-.]*,*.bash,*/{,.}bash[_-]completion{,.d,.sh}{,/*},*.ebuild,*.eclass,PKGBUILD* call dist#ft#SetFileTypeSH("bash")
 au BufNewFile,BufRead .kshrc*,*.ksh call dist#ft#SetFileTypeSH("ksh")
 au BufNewFile,BufRead */etc/profile,.profile*,*.sh,*.env call dist#ft#SetFileTypeSH(getline(1))
 
@@ -1759,6 +1766,9 @@ au BufNewFile,BufRead *.vroom			setf vroom
 " Webmacro
 au BufNewFile,BufRead *.wm			setf webmacro
 
+" WebAssembly
+au BufNewFile,BufRead *.wast,*.wat		setf wast
+
 " Wget config
 au BufNewFile,BufRead .wgetrc,wgetrc		setf wget
 
@@ -1854,6 +1864,9 @@ au BufNewFile,BufRead */etc/xdg/menus/*.menu	setf xml
 
 " ATI graphics driver configuration
 au BufNewFile,BufRead fglrxrc			setf xml
+
+" Web Services Description Language (WSDL)
+au BufNewFile,BufRead *.wsdl			setf xml
 
 " XLIFF (XML Localisation Interchange File Format) is also XML
 au BufNewFile,BufRead *.xlf			setf xml

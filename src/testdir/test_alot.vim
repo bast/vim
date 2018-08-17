@@ -2,9 +2,11 @@
 " This makes testing go faster, since Vim doesn't need to restart.
 
 source test_assign.vim
+source test_backup.vim
 source test_bufline.vim
 source test_cd.vim
 source test_changedtick.vim
+source test_compiler.vim
 source test_cursor_func.vim
 source test_delete.vim
 source test_ex_undo.vim
@@ -36,6 +38,7 @@ source test_mapping.vim
 source test_match.vim
 source test_menu.vim
 source test_messages.vim
+source test_modeline.vim
 source test_partial.vim
 source test_popup.vim
 source test_put.vim

@@ -689,7 +689,7 @@ dbg_parsearg(
 }
 
 /*
- * ":breakadd".
+ * ":breakadd".  Also used for ":profile".
  */
     void
 ex_breakadd(exarg_T *eap)
@@ -1206,7 +1206,7 @@ profile_zero(proftime_T *tm)
 static timer_T	*first_timer = NULL;
 static long	last_timer_id = 0;
 
-    static long
+    long
 proftime_time_left(proftime_T *due, proftime_T *now)
 {
 #  ifdef WIN3264
@@ -1336,6 +1336,8 @@ check_due_timer(void)
 	this_due = proftime_time_left(&timer->tr_due, &now);
 	if (this_due <= 1)
 	{
+	    /* Save and restore a lot of flags, because the timer fires while
+	     * waiting for a character, which might be halfway a command. */
 	    int save_timer_busy = timer_busy;
 	    int save_vgetc_busy = vgetc_busy;
 	    int save_did_emsg = did_emsg;
@@ -1345,6 +1347,7 @@ check_due_timer(void)
 	    int save_did_throw = did_throw;
 	    int save_ex_pressedreturn = get_pressedreturn();
 	    except_T *save_current_exception = current_exception;
+	    vimvars_save_T vvsave;
 
 	    /* Create a scope for running the timer callback, ignoring most of
 	     * the current scope, such as being inside a try/catch. */
@@ -1357,6 +1360,7 @@ check_due_timer(void)
 	    trylevel = 0;
 	    did_throw = FALSE;
 	    current_exception = NULL;
+	    save_vimvars(&vvsave);
 
 	    timer->tr_firing = TRUE;
 	    timer_callback(timer);
@@ -1373,6 +1377,7 @@ check_due_timer(void)
 	    trylevel = save_trylevel;
 	    did_throw = save_did_throw;
 	    current_exception = save_current_exception;
+	    restore_vimvars(&vvsave);
 	    if (must_redraw != 0)
 		need_update_screen = TRUE;
 	    must_redraw = must_redraw > save_must_redraw
@@ -1414,15 +1419,19 @@ check_due_timer(void)
 	    bevalexpr_due_set = FALSE;
 	    if (balloonEval == NULL)
 	    {
-		balloonEval = (BalloonEval *)alloc(sizeof(BalloonEval));
+		balloonEval = (BalloonEval *)alloc_clear(sizeof(BalloonEval));
 		balloonEvalForTerm = TRUE;
 	    }
 	    if (balloonEval != NULL)
 		general_beval_cb(balloonEval, 0);
 	}
-	else if (this_due > 0 && (next_due == -1 || next_due > this_due))
+	else if (next_due == -1 || next_due > this_due)
 	    next_due = this_due;
     }
+#endif
+#ifdef FEAT_TERMINAL
+    /* Some terminal windows may need their buffer updated. */
+    next_due = term_check_timers(next_due, &now);
 #endif
 
     return current_id != last_timer_id ? 1 : next_due;
@@ -1488,16 +1497,16 @@ add_timer_info(typval_T *rettv, timer_T *timer)
 	return;
     list_append_dict(list, dict);
 
-    dict_add_nr_str(dict, "id", timer->tr_id, NULL);
-    dict_add_nr_str(dict, "time", (long)timer->tr_interval, NULL);
+    dict_add_number(dict, "id", timer->tr_id);
+    dict_add_number(dict, "time", (long)timer->tr_interval);
 
     profile_start(&now);
     remaining = proftime_time_left(&timer->tr_due, &now);
-    dict_add_nr_str(dict, "remaining", (long)remaining, NULL);
+    dict_add_number(dict, "remaining", (long)remaining);
 
-    dict_add_nr_str(dict, "repeat",
-	       (long)(timer->tr_repeat < 0 ? -1 : timer->tr_repeat + 1), NULL);
-    dict_add_nr_str(dict, "paused", (long)(timer->tr_paused), NULL);
+    dict_add_number(dict, "repeat",
+		    (long)(timer->tr_repeat < 0 ? -1 : timer->tr_repeat + 1));
+    dict_add_number(dict, "paused", (long)(timer->tr_paused));
 
     di = dictitem_alloc((char_u *)"callback");
     if (di != NULL)
@@ -1515,7 +1524,6 @@ add_timer_info(typval_T *rettv, timer_T *timer)
 	    di->di_tv.v_type = VAR_FUNC;
 	    di->di_tv.vval.v_string = vim_strsave(timer->tr_callback);
 	}
-	di->di_tv.v_lock = 0;
     }
 }
 
@@ -2440,9 +2448,7 @@ static char_u	*do_one_arg(char_u *str);
 static int	do_arglist(char_u *str, int what, int after);
 static void	alist_check_arg_idx(void);
 static int	editing_arg_idx(win_T *win);
-#ifdef FEAT_LISTCMDS
 static int	alist_add_list(int count, char_u **files, int after);
-#endif
 #define AL_SET	1
 #define AL_ADD	2
 #define AL_DEL	3
@@ -2567,10 +2573,8 @@ do_arglist(
     int		exp_count;
     char_u	**exp_files;
     int		i;
-#ifdef FEAT_LISTCMDS
     char_u	*p;
     int		match;
-#endif
     int		arg_escaped = TRUE;
 
     /*
@@ -2590,7 +2594,6 @@ do_arglist(
     if (get_arglist(&new_ga, str, arg_escaped) == FAIL)
 	return FAIL;
 
-#ifdef FEAT_LISTCMDS
     if (what == AL_DEL)
     {
 	regmatch_T	regmatch;
@@ -2637,7 +2640,6 @@ do_arglist(
 	ga_clear(&new_ga);
     }
     else
-#endif
     {
 	i = expand_wildcards(new_ga.ga_len, (char_u **)new_ga.ga_data,
 		&exp_count, &exp_files, EW_DIR|EW_FILE|EW_ADDSLASH|EW_NOTFOUND);
@@ -2648,14 +2650,12 @@ do_arglist(
 	    return FAIL;
 	}
 
-#ifdef FEAT_LISTCMDS
 	if (what == AL_ADD)
 	{
 	    (void)alist_add_list(exp_count, exp_files, after);
 	    vim_free(exp_files);
 	}
 	else /* what == AL_SET */
-#endif
 	    alist_set(ALIST(curwin), exp_count, exp_files, FALSE, NULL, 0);
     }
 
@@ -2737,16 +2737,11 @@ ex_args(exarg_T *eap)
 
     if (eap->cmdidx != CMD_args)
     {
-#if defined(FEAT_LISTCMDS)
 	alist_unlink(ALIST(curwin));
 	if (eap->cmdidx == CMD_argglobal)
 	    ALIST(curwin) = &global_alist;
 	else /* eap->cmdidx == CMD_arglocal */
 	    alist_new();
-#else
-	ex_ni(eap);
-	return;
-#endif
     }
 
     if (!ends_excmd(*eap->arg))
@@ -2757,31 +2752,28 @@ ex_args(exarg_T *eap)
 	 */
 	ex_next(eap);
     }
-    else
-#if defined(FEAT_LISTCMDS)
-	if (eap->cmdidx == CMD_args)
-#endif
+    else if (eap->cmdidx == CMD_args)
     {
 	/*
 	 * ":args": list arguments.
 	 */
 	if (ARGCOUNT > 0)
 	{
-	    /* Overwrite the command, for a short list there is no scrolling
-	     * required and no wait_return(). */
-	    gotocmdline(TRUE);
-	    for (i = 0; i < ARGCOUNT; ++i)
+	    char_u **items = (char_u **)alloc(sizeof(char_u *) * ARGCOUNT);
+
+	    if (items != NULL)
 	    {
-		if (i == curwin->w_arg_idx)
-		    msg_putchar('[');
-		msg_outtrans(alist_name(&ARGLIST[i]));
-		if (i == curwin->w_arg_idx)
-		    msg_putchar(']');
-		msg_putchar(' ');
+		/* Overwrite the command, for a short list there is no
+		 * scrolling required and no wait_return(). */
+		gotocmdline(TRUE);
+
+		for (i = 0; i < ARGCOUNT; ++i)
+		    items[i] = alist_name(&ARGLIST[i]);
+		list_in_columns(items, ARGCOUNT, curwin->w_arg_idx);
+		vim_free(items);
 	    }
 	}
     }
-#if defined(FEAT_LISTCMDS)
     else if (eap->cmdidx == CMD_arglocal)
     {
 	garray_T	*gap = &curwin->w_alist->al_ga;
@@ -2800,7 +2792,6 @@ ex_args(exarg_T *eap)
 		    ++gap->ga_len;
 		}
     }
-#endif
 }
 
 /*
@@ -2951,7 +2942,6 @@ ex_next(exarg_T *eap)
     }
 }
 
-#if defined(FEAT_LISTCMDS) || defined(PROTO)
 /*
  * ":argedit"
  */
@@ -2959,6 +2949,8 @@ ex_next(exarg_T *eap)
 ex_argedit(exarg_T *eap)
 {
     int i = eap->addr_count ? (int)eap->line2 : curwin->w_arg_idx + 1;
+    // Whether curbuf will be reused, curbuf->b_ffname will be set.
+    int curbuf_is_reusable = curbuf_reusable();
 
     if (do_arglist(eap->arg, AL_ADD, i) == FAIL)
 	return;
@@ -2966,8 +2958,9 @@ ex_argedit(exarg_T *eap)
     maketitle();
 #endif
 
-    if (curwin->w_arg_idx == 0 && (curbuf->b_ml.ml_flags & ML_EMPTY)
-	    && curbuf->b_ffname == NULL)
+    if (curwin->w_arg_idx == 0
+	    && (curbuf->b_ml.ml_flags & ML_EMPTY)
+	    && (curbuf->b_ffname == NULL || curbuf_is_reusable))
 	i = 0;
     /* Edit the argument. */
     if (i < ARGCOUNT)
@@ -3299,7 +3292,8 @@ alist_add_list(
 	for (i = 0; i < count; ++i)
 	{
 	    ARGLIST[after + i].ae_fname = files[i];
-	    ARGLIST[after + i].ae_fnum = buflist_add(files[i], BLN_LISTED);
+	    ARGLIST[after + i].ae_fnum =
+				buflist_add(files[i], BLN_LISTED | BLN_CURBUF);
 	}
 	ALIST(curwin)->al_ga.ga_len += count;
 	if (old_argcount > 0 && curwin->w_arg_idx >= after)
@@ -3312,7 +3306,21 @@ alist_add_list(
     return -1;
 }
 
-#endif /* FEAT_LISTCMDS */
+#if defined(FEAT_CMDL_COMPL) || defined(PROTO)
+/*
+ * Function given to ExpandGeneric() to obtain the possible arguments of the
+ * argedit and argdelete commands.
+ */
+    char_u *
+get_arglist_name(expand_T *xp UNUSED, int idx)
+{
+    if (idx >= ARGCOUNT)
+	return NULL;
+
+    return alist_name(&ARGLIST[idx]);
+}
+#endif
+
 
 #ifdef FEAT_EVAL
 /*
@@ -3826,10 +3834,30 @@ static int APP_BOTH;
     static void
 add_pack_plugin(char_u *fname, void *cookie)
 {
-    if (cookie != &APP_LOAD && strstr((char *)p_rtp, (char *)fname) == NULL)
-	/* directory is not yet in 'runtimepath', add it */
-	if (add_pack_dir_to_rtp(fname) == FAIL)
+    if (cookie != &APP_LOAD)
+    {
+	char_u	*buf = alloc(MAXPATHL);
+	char_u	*p;
+	int	found = FALSE;
+
+	if (buf == NULL)
 	    return;
+	p = p_rtp;
+	while (*p != NUL)
+	{
+	    copy_option_part(&p, buf, MAXPATHL, ",");
+	    if (pathcmp((char *)buf, (char *)fname, -1) == 0)
+	    {
+		found = TRUE;
+		break;
+	    }
+	}
+	vim_free(buf);
+	if (!found)
+	    /* directory is not yet in 'runtimepath', add it */
+	    if (add_pack_dir_to_rtp(fname) == FAIL)
+		return;
+    }
 
     if (cookie != &APP_ADD_DIR)
 	load_pack_plugin(fname);
@@ -4120,7 +4148,8 @@ ex_source(exarg_T *eap)
 	char_u *fname = NULL;
 
 	fname = do_browse(0, (char_u *)_("Source Vim script"), eap->arg,
-				      NULL, NULL, BROWSE_FILTER_MACROS, NULL);
+				      NULL, NULL,
+				      (char_u *)_(BROWSE_FILTER_MACROS), NULL);
 	if (fname != NULL)
 	{
 	    cmd_source(fname, eap);
@@ -5179,7 +5208,6 @@ source_finished(
 }
 #endif
 
-#if defined(FEAT_LISTCMDS) || defined(PROTO)
 /*
  * ":checktime [buffer]"
  */
@@ -5200,7 +5228,6 @@ ex_checktime(exarg_T *eap)
     }
     no_check_timestamps = save_no_check_timestamps;
 }
-#endif
 
 #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
 	&& (defined(FEAT_EVAL) || defined(FEAT_MULTI_LANG))

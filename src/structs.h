@@ -271,10 +271,10 @@ typedef struct
 # define w_p_scl w_onebuf_opt.wo_scl	/* 'signcolumn' */
 #endif
 #ifdef FEAT_TERMINAL
-    char_u	*wo_tk;
-#define w_p_tk w_onebuf_opt.wo_tk	/* 'termkey' */
-    char_u	*wo_tms;
-#define w_p_tms w_onebuf_opt.wo_tms	/* 'termsize' */
+    char_u	*wo_twk;
+# define w_p_twk w_onebuf_opt.wo_twk	/* 'termwinkey' */
+    char_u	*wo_tws;
+# define w_p_tws w_onebuf_opt.wo_tws	/* 'termwinsize' */
 #endif
 
 #ifdef FEAT_EVAL
@@ -827,9 +827,9 @@ struct msglist
  */
 typedef enum
 {
-    ET_USER,		/* exception caused by ":throw" command */
-    ET_ERROR,		/* error exception */
-    ET_INTERRUPT	/* interrupt exception triggered by Ctrl-C */
+    ET_USER,		// exception caused by ":throw" command
+    ET_ERROR,		// error exception
+    ET_INTERRUPT,	// interrupt exception triggered by Ctrl-C
 } except_type_T;
 
 /*
@@ -1190,16 +1190,16 @@ typedef struct channel_S channel_T;
 typedef enum
 {
     VAR_UNKNOWN = 0,
-    VAR_NUMBER,	 /* "v_number" is used */
-    VAR_STRING,	 /* "v_string" is used */
-    VAR_FUNC,	 /* "v_string" is function name */
-    VAR_PARTIAL, /* "v_partial" is used */
-    VAR_LIST,	 /* "v_list" is used */
-    VAR_DICT,	 /* "v_dict" is used */
-    VAR_FLOAT,	 /* "v_float" is used */
-    VAR_SPECIAL, /* "v_number" is used */
-    VAR_JOB,	 /* "v_job" is used */
-    VAR_CHANNEL	 /* "v_channel" is used */
+    VAR_NUMBER,	 // "v_number" is used
+    VAR_STRING,	 // "v_string" is used
+    VAR_FUNC,	 // "v_string" is function name
+    VAR_PARTIAL, // "v_partial" is used
+    VAR_LIST,	 // "v_list" is used
+    VAR_DICT,	 // "v_dict" is used
+    VAR_FLOAT,	 // "v_float" is used
+    VAR_SPECIAL, // "v_number" is used
+    VAR_JOB,	 // "v_job" is used
+    VAR_CHANNEL, // "v_channel" is used
 } vartype_T;
 
 /*
@@ -1345,6 +1345,7 @@ typedef struct
     garray_T	uf_lines;	/* function lines */
 #ifdef FEAT_PROFILE
     int		uf_profiling;	/* TRUE when func is being profiled */
+    int		uf_prof_initialized;
     /* profiling the function as a whole */
     int		uf_tm_count;	/* nr of calls */
     proftime_T	uf_tm_total;	/* time spent in function + children */
@@ -1456,8 +1457,8 @@ typedef enum
 {
     JOB_FAILED,
     JOB_STARTED,
-    JOB_ENDED,	    /* detected job done */
-    JOB_FINISHED    /* job done and cleanup done */
+    JOB_ENDED,	    // detected job done
+    JOB_FINISHED,   // job done and cleanup done
 } jobstatus_T;
 
 /*
@@ -1488,6 +1489,7 @@ struct jobvar_S
     int		jv_copyID;
 
     channel_T	*jv_channel;	/* channel for I/O, reference counted */
+    char	**jv_argv;	/* command line used to start the job */
 };
 
 /*
@@ -1531,11 +1533,11 @@ typedef enum
     MODE_NL = 0,
     MODE_RAW,
     MODE_JSON,
-    MODE_JS
+    MODE_JS,
 } ch_mode_T;
 
 typedef enum {
-    JIO_PIPE,	    /* default */
+    JIO_PIPE,	    // default
     JIO_NULL,
     JIO_FILE,
     JIO_BUFFER,
@@ -1557,7 +1559,7 @@ typedef enum {
     PART_IN,
 # define CH_IN_FD	CH_PART_FD(PART_IN)
 #endif
-    PART_COUNT
+    PART_COUNT,
 } ch_part_T;
 
 #define INVALID_FD	(-1)
@@ -1708,7 +1710,7 @@ struct channel_S {
 #define JO2_EOF_CHARS	    0x1000	/* "eof_chars" */
 #define JO2_NORESTORE	    0x2000	/* "norestore" */
 #define JO2_TERM_KILL	    0x4000	/* "term_kill" */
-#define JO2_ALL		    0x7FFF
+#define JO2_ANSI_COLORS	    0x8000	/* "ansi_colors" */
 
 #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
 #define JO_CB_ALL \
@@ -1777,6 +1779,9 @@ typedef struct
     int		jo_term_finish;
     char_u	*jo_eof_chars;
     char_u	*jo_term_kill;
+# if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+    long_u	jo_ansi_colors[16];
+# endif
 #endif
 } jobopt_T;
 
@@ -2232,6 +2237,13 @@ struct file_buffer
     long	b_p_wm;		/* 'wrapmargin' */
     long	b_p_wm_nobin;	/* b_p_wm saved for binary mode */
     long	b_p_wm_nopaste;	/* b_p_wm saved for paste mode */
+#ifdef FEAT_VARTABS
+    char_u	*b_p_vsts;	/* 'varsofttabstop' */
+    int		*b_p_vsts_array;   /* 'varsofttabstop' in internal format */
+    char_u	*b_p_vsts_nopaste; /* b_p_vsts saved for paste mode */
+    char_u	*b_p_vts;	/* 'vartabstop' */
+    int		*b_p_vts_array;	/* 'vartabstop' in internal format */
+#endif
 #ifdef FEAT_KEYMAP
     char_u	*b_p_keymap;	/* 'keymap' */
 #endif
@@ -2258,6 +2270,9 @@ struct file_buffer
 #endif
 #ifdef FEAT_LISP
     char_u	*b_p_lw;	/* 'lispwords' local value */
+#endif
+#ifdef FEAT_TERMINAL
+    long	b_p_twsl;	/* 'termwinscroll' */
 #endif
 
     /* end of buffer options */
@@ -2349,6 +2364,15 @@ struct file_buffer
 
     int		b_shortname;	/* this file has an 8.3 file name */
 
+#ifdef FEAT_JOB_CHANNEL
+    char_u	*b_prompt_text;	     // set by prompt_setprompt()
+    char_u	*b_prompt_callback;  // set by prompt_setcallback()
+    partial_T	*b_prompt_partial;   // set by prompt_setcallback()
+    char_u	*b_prompt_interrupt;   // set by prompt_setinterrupt()
+    partial_T	*b_prompt_int_partial; // set by prompt_setinterrupt()
+    int		b_prompt_insert;     // value for restart_edit when entering
+				     // a prompt buffer window.
+#endif
 #ifdef FEAT_MZSCHEME
     void	*b_mzscheme_ref; /* The MzScheme reference to this buffer */
 #endif
@@ -3249,15 +3273,15 @@ typedef struct {
  */
 typedef enum
 {
-    TYPE_UNKNOWN = 0
-    , TYPE_EQUAL	/* == */
-    , TYPE_NEQUAL	/* != */
-    , TYPE_GREATER	/* >  */
-    , TYPE_GEQUAL	/* >= */
-    , TYPE_SMALLER	/* <  */
-    , TYPE_SEQUAL	/* <= */
-    , TYPE_MATCH	/* =~ */
-    , TYPE_NOMATCH	/* !~ */
+    TYPE_UNKNOWN = 0,
+    TYPE_EQUAL,		// ==
+    TYPE_NEQUAL,	// !=
+    TYPE_GREATER,	// >
+    TYPE_GEQUAL,	// >=
+    TYPE_SMALLER,	// <
+    TYPE_SEQUAL,	// <=
+    TYPE_MATCH,		// =~
+    TYPE_NOMATCH,	// !~
 } exptype_T;
 
 /*
@@ -3416,3 +3440,9 @@ typedef struct {
     int		save_opcount;
     tasave_T	tabuf;
 } save_state_T;
+
+typedef struct {
+    varnumber_T vv_prevcount;
+    varnumber_T vv_count;
+    varnumber_T vv_count1;
+} vimvars_save_T;

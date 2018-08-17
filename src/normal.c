@@ -111,9 +111,7 @@ static void	nv_findpar(cmdarg_T *cap);
 static void	nv_undo(cmdarg_T *cap);
 static void	nv_kundo(cmdarg_T *cap);
 static void	nv_Replace(cmdarg_T *cap);
-#ifdef FEAT_VREPLACE
 static void	nv_vreplace(cmdarg_T *cap);
-#endif
 static void	v_swap_corners(int cmdchar);
 static void	nv_replace(cmdarg_T *cap);
 static void	n_swapchar(cmdarg_T *cap);
@@ -871,8 +869,8 @@ getcount:
 		|| (nv_cmds[idx].cmd_flags & NV_NCH_ALW) == NV_NCH_ALW
 		|| (ca.cmdchar == 'q'
 		    && oap->op_type == OP_NOP
-		    && !Recording
-		    && !Exec_reg)
+		    && reg_recording == 0
+		    && reg_executing == 0)
 		|| ((ca.cmdchar == 'a' || ca.cmdchar == 'i')
 		    && (oap->op_type != OP_NOP || VIsual_active))))
     {
@@ -2219,7 +2217,7 @@ op_colon(oparg_T *oap)
 op_function(oparg_T *oap UNUSED)
 {
 #ifdef FEAT_EVAL
-    char_u	*(argv[1]);
+    typval_T	argv[2];
 # ifdef FEAT_VIRTUALEDIT
     int		save_virtual_op = virtual_op;
 # endif
@@ -2235,12 +2233,14 @@ op_function(oparg_T *oap UNUSED)
 	    /* Exclude the end position. */
 	    decl(&curbuf->b_op_end);
 
+	argv[0].v_type = VAR_STRING;
 	if (oap->block_mode)
-	    argv[0] = (char_u *)"block";
+	    argv[0].vval.v_string = (char_u *)"block";
 	else if (oap->motion_type == MLINE)
-	    argv[0] = (char_u *)"line";
+	    argv[0].vval.v_string = (char_u *)"line";
 	else
-	    argv[0] = (char_u *)"char";
+	    argv[0].vval.v_string = (char_u *)"char";
+	argv[1].v_type = VAR_UNKNOWN;
 
 # ifdef FEAT_VIRTUALEDIT
 	/* Reset virtual_op so that 'virtualedit' can be changed in the
@@ -2248,7 +2248,7 @@ op_function(oparg_T *oap UNUSED)
 	virtual_op = MAYBE;
 # endif
 
-	(void)call_func_retnr(p_opfunc, 1, argv, FALSE);
+	(void)call_func_retnr(p_opfunc, 1, argv);
 
 # ifdef FEAT_VIRTUALEDIT
 	virtual_op = save_virtual_op;
@@ -2610,7 +2610,7 @@ do_mouse(
 			end_visual_mode();
 		}
 	    }
-	    else if (c1 < 0)
+	    else
 	    {
 		tabpage_T	*tp;
 
@@ -4180,6 +4180,11 @@ nv_help(cmdarg_T *cap)
     static void
 nv_addsub(cmdarg_T *cap)
 {
+#ifdef FEAT_JOB_CHANNEL
+    if (bt_prompt(curbuf) && !prompt_curpos_editable())
+	clearopbeep(cap->oap);
+    else
+#endif
     if (!VIsual_active && cap->oap->op_type == OP_NOP)
     {
 	prep_redo_cmd(cap);
@@ -6195,23 +6200,28 @@ nv_down(cmdarg_T *cap)
 	cap->arg = FORWARD;
 	nv_page(cap);
     }
-    else
 #if defined(FEAT_QUICKFIX)
-    /* In a quickfix window a <CR> jumps to the error under the cursor. */
-    if (bt_quickfix(curbuf) && cap->cmdchar == CAR)
-    {
-	if (curwin->w_llist_ref == NULL)
-	    do_cmdline_cmd((char_u *)".cc");	/* quickfix window */
-	else
-	    do_cmdline_cmd((char_u *)".ll");	/* location list window */
-    }
-    else
+    /* Quickfix window only: view the result under the cursor. */
+    else if (bt_quickfix(curbuf) && cap->cmdchar == CAR)
+	qf_view_result(FALSE);
 #endif
+    else
     {
 #ifdef FEAT_CMDWIN
 	/* In the cmdline window a <CR> executes the command. */
 	if (cmdwin_type != 0 && cap->cmdchar == CAR)
 	    cmdwin_result = CAR;
+	else
+#endif
+#ifdef FEAT_JOB_CHANNEL
+	/* In a prompt buffer a <CR> in the last line invokes the callback. */
+	if (bt_prompt(curbuf) && cap->cmdchar == CAR
+		       && curwin->w_cursor.lnum == curbuf->b_ml.ml_line_count)
+	{
+	    invoke_prompt_callback();
+	    if (restart_edit == 0)
+		restart_edit = 'a';
+	}
 	else
 #endif
 	{
@@ -6972,6 +6982,13 @@ nv_kundo(cmdarg_T *cap)
 {
     if (!checkclearopq(cap->oap))
     {
+#ifdef FEAT_JOB_CHANNEL
+	if (bt_prompt(curbuf))
+	{
+	    clearopbeep(cap->oap);
+	    return;
+	}
+#endif
 	u_undo((int)cap->count1);
 	curwin->w_set_curswant = TRUE;
     }
@@ -6989,6 +7006,13 @@ nv_replace(cmdarg_T *cap)
 
     if (checkclearop(cap->oap))
 	return;
+#ifdef FEAT_JOB_CHANNEL
+    if (bt_prompt(curbuf) && !prompt_curpos_editable())
+    {
+	clearopbeep(cap->oap);
+	return;
+    }
+#endif
 
     /* get another character */
     if (cap->nchar == Ctrl_V)
@@ -7274,7 +7298,6 @@ nv_Replace(cmdarg_T *cap)
     }
 }
 
-#ifdef FEAT_VREPLACE
 /*
  * "gr".
  */
@@ -7297,15 +7320,14 @@ nv_vreplace(cmdarg_T *cap)
 		cap->extra_char = get_literal();
 	    stuffcharReadbuff(cap->extra_char);
 	    stuffcharReadbuff(ESC);
-# ifdef FEAT_VIRTUALEDIT
+#ifdef FEAT_VIRTUALEDIT
 	    if (virtual_active())
 		coladvance(getviscol());
-# endif
+#endif
 	    invoke_edit(cap, TRUE, 'v', FALSE);
 	}
     }
 }
-#endif
 
 /*
  * Swap case for "~" command, when it does not work like an operator.
@@ -7464,6 +7486,13 @@ nv_subst(cmdarg_T *cap)
     /* When showing output of term_dumpdiff() swap the top and botom. */
     if (term_swap_diff() == OK)
 	return;
+#endif
+#ifdef FEAT_JOB_CHANNEL
+    if (bt_prompt(curbuf) && !prompt_curpos_editable())
+    {
+	clearopbeep(cap->oap);
+	return;
+    }
 #endif
     if (VIsual_active)	/* "vs" and "vS" are the same as "vc" */
     {
@@ -7797,7 +7826,7 @@ n_start_visual_mode(int c)
 {
 #ifdef FEAT_CONCEAL
     /* Check for redraw before changing the state. */
-    conceal_check_cursur_line();
+    conceal_check_cursor_line();
 #endif
 
     VIsual_mode = c;
@@ -7824,7 +7853,7 @@ n_start_visual_mode(int c)
 #endif
 #ifdef FEAT_CONCEAL
     /* Check for redraw after changing the state. */
-    conceal_check_cursur_line();
+    conceal_check_cursor_line();
 #endif
 
     if (p_smd && msg_silent == 0)
@@ -7911,7 +7940,6 @@ nv_g_cmd(cmdarg_T *cap)
 	    clearopbeep(oap);
 	break;
 
-#ifdef FEAT_VREPLACE
     /*
      * "gR": Enter virtual replace mode.
      */
@@ -7923,7 +7951,6 @@ nv_g_cmd(cmdarg_T *cap)
     case 'r':
 	nv_vreplace(cap);
 	break;
-#endif
 
     case '&':
 	do_cmdline_cmd((char_u *)"%s//~/&");
@@ -8491,7 +8518,7 @@ n_opencmd(cmdarg_T *cap)
 #ifdef FEAT_COMMENTS
 		    has_format_option(FO_OPEN_COMS) ? OPENLINE_DO_COM :
 #endif
-		    0, 0))
+		    0, 0) == OK)
 	{
 #ifdef FEAT_CONCEAL
 	    if (curwin->w_p_cole > 0 && oldline != curwin->w_cursor.lnum)
@@ -8570,7 +8597,16 @@ nv_Undo(cmdarg_T *cap)
 nv_tilde(cmdarg_T *cap)
 {
     if (!p_to && !VIsual_active && cap->oap->op_type != OP_TILDE)
+    {
+#ifdef FEAT_JOB_CHANNEL
+	if (bt_prompt(curbuf) && !prompt_curpos_editable())
+	{
+	    clearopbeep(cap->oap);
+	    return;
+	}
+#endif
 	n_swapchar(cap);
+    }
     else
 	nv_operator(cap);
 }
@@ -8585,6 +8621,13 @@ nv_operator(cmdarg_T *cap)
     int	    op_type;
 
     op_type = get_op_type(cap->cmdchar, cap->nchar);
+#ifdef FEAT_JOB_CHANNEL
+    if (bt_prompt(curbuf) && op_is_change(op_type) && !prompt_curpos_editable())
+    {
+	clearopbeep(cap->oap);
+	return;
+    }
+#endif
 
     if (op_type == cap->oap->op_type)	    /* double operator works on lines */
 	nv_lineop(cap);
@@ -9324,7 +9367,7 @@ nv_record(cmdarg_T *cap)
 #endif
 	    /* (stop) recording into a named register, unless executing a
 	     * register */
-	    if (!Exec_reg && do_record(cap->nchar) == FAIL)
+	    if (reg_executing == 0 && do_record(cap->nchar) == FAIL)
 		clearopbeep(cap->oap);
     }
 }
@@ -9426,6 +9469,12 @@ nv_put(cmdarg_T *cap)
 #endif
 	clearopbeep(cap->oap);
     }
+#ifdef FEAT_JOB_CHANNEL
+    else if (bt_prompt(curbuf) && !prompt_curpos_editable())
+    {
+	clearopbeep(cap->oap);
+    }
+#endif
     else
     {
 	dir = (cap->cmdchar == 'P'
@@ -9551,6 +9600,12 @@ nv_open(cmdarg_T *cap)
 #endif
     if (VIsual_active)  /* switch start and end of visual */
 	v_swap_corners(cap->cmdchar);
+#ifdef FEAT_JOB_CHANNEL
+    else if (bt_prompt(curbuf))
+    {
+	clearopbeep(cap->oap);
+    }
+#endif
     else
 	n_opencmd(cap);
 }

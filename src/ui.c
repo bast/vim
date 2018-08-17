@@ -415,7 +415,10 @@ ui_breakcheck_force(int force)
 #endif
 	mch_breakcheck(force);
 
-    updating_screen = save_us;
+    if (save_us)
+	updating_screen = save_us;
+    else
+	reset_updating_screen(FALSE);
 }
 
 /*****************************************************************************
@@ -1854,18 +1857,15 @@ fill_input_buf(int exit_on_error UNUSED)
     len = 0;	/* to avoid gcc warning */
     for (try = 0; try < 100; ++try)
     {
-#  ifdef VMS
-	len = vms_read(
-#  else
-	len = read(read_cmd_fd,
-#  endif
-	    (char *)inbuf + inbufcount, (size_t)((INBUFLEN - inbufcount)
+	size_t readlen = (size_t)((INBUFLEN - inbufcount)
 #  ifdef FEAT_MBYTE
-		/ input_conv.vc_factor
+			    / input_conv.vc_factor
 #  endif
-		));
-#  if 0
-		)	/* avoid syntax highlight error */
+			    );
+#  ifdef VMS
+	len = vms_read((char *)inbuf + inbufcount, readlen);
+#  else
+	len = read(read_cmd_fd, (char *)inbuf + inbufcount, readlen);
 #  endif
 
 	if (len > 0 || got_int)
@@ -1974,7 +1974,7 @@ ui_cursor_shape_forced(int forced)
 # endif
 
 # ifdef FEAT_CONCEAL
-    conceal_check_cursur_line();
+    conceal_check_cursor_line();
 # endif
 }
 

@@ -117,6 +117,31 @@ func Test_omni_dash()
   set omnifunc=
 endfunc
 
+func Test_completefunc_args()
+  let s:args = []
+  func! CompleteFunc(findstart, base)
+    let s:args += [[a:findstart, empty(a:base)]]
+  endfunc
+  new
+
+  set completefunc=CompleteFunc
+  call feedkeys("i\<C-X>\<C-U>\<Esc>", 'x')
+  call assert_equal([1, 1], s:args[0])
+  call assert_equal(0, s:args[1][0])
+  set completefunc=
+
+  let s:args = []
+  set omnifunc=CompleteFunc
+  call feedkeys("i\<C-X>\<C-O>\<Esc>", 'x')
+  call assert_equal([1, 1], s:args[0])
+  call assert_equal(0, s:args[1][0])
+  set omnifunc=
+
+  bwipe!
+  unlet s:args
+  delfunc CompleteFunc
+endfunc
+
 function! s:CompleteDone_CompleteFuncDict( findstart, base )
   if a:findstart
     return 0
@@ -234,6 +259,19 @@ function Test_CompleteDoneList()
   call assert_true( s:called_completedone )
 
   let s:called_completedone = 0
+  au! CompleteDone
+endfunc
+
+func Test_CompleteDone_undo()
+  au CompleteDone * call append(0, "prepend1")
+  new
+  call setline(1, ["line1", "line2"])
+  call feedkeys("Go\<C-X>\<C-N>\<CR>\<ESC>", "tx")
+  call assert_equal(["prepend1", "line1", "line2", "line1", ""],
+              \     getline(1, '$'))
+  undo
+  call assert_equal(["line1", "line2"], getline(1, '$'))
+  bwipe!
   au! CompleteDone
 endfunc
 

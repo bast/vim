@@ -706,6 +706,10 @@ vim_main2(void)
 	scroll_region_reset();		/* In case Rows changed */
     scroll_start();	/* may scroll the screen to the right position */
 
+#if defined(FEAT_TITLE) && (defined(UNIX) || defined(VMS) || defined(MACOS_X))
+    term_push_title(SAVE_RESTORE_BOTH);
+#endif
+
     /*
      * Don't clear the screen when starting in Ex mode, unless using the GUI.
      */
@@ -824,7 +828,7 @@ vim_main2(void)
     no_wait_return = FALSE;
 
     /* 'autochdir' has been postponed */
-    DO_AUTOCHDIR
+    DO_AUTOCHDIR;
 
 #ifdef FEAT_TERMRESPONSE
     /* Requesting the termresponse is postponed until here, so that a "-c q"
@@ -911,7 +915,7 @@ vim_main2(void)
 
     /*
      * Call the main command loop.  This never returns.
-    */
+     */
     main_loop(FALSE, FALSE);
 
 #endif /* NO_VIM_MAIN */
@@ -939,10 +943,6 @@ common_init(mparm_T *paramp)
 
     /* Init the table of Normal mode commands. */
     init_normal_cmds();
-
-#if defined(HAVE_DATE_TIME) && defined(VMS) && defined(VAXC)
-    make_version();	/* Construct the long version string. */
-#endif
 
     /*
      * Allocate space for the generic buffers (needed for set_init_1() and
@@ -1056,7 +1056,7 @@ main_loop(
     int		cmdwin,	    /* TRUE when working in the command-line window */
     int		noexmode)   /* TRUE when return on entering Ex mode */
 {
-    oparg_T	oa;				/* operator arguments */
+    oparg_T	oa;	/* operator arguments */
     volatile int previous_got_int = FALSE;	/* "got_int" was TRUE */
 #ifdef FEAT_CONCEAL
     /* these are static to avoid a compiler warning */
@@ -1159,9 +1159,15 @@ main_loop(
 	else if (do_redraw || stuff_empty())
 	{
 #ifdef FEAT_GUI
-	    /* If ui_breakcheck() was used a resize may have been postponed. */
+	    // If ui_breakcheck() was used a resize may have been postponed.
 	    gui_may_resize_shell();
 #endif
+#ifdef HAVE_DROP_FILE
+	    // If files were dropped while text was locked or the curbuf was
+	    // locked, this would be a good time to handle the drop.
+	    handle_any_postponed_drop();
+#endif
+
 	    /* Trigger CursorMoved if the cursor moved. */
 	    if (!finish_op && (
 			has_cursormoved()
@@ -1339,7 +1345,8 @@ main_loop(
 #ifdef FEAT_TERMINAL
 	    if (term_use_loop()
 		    && oa.op_type == OP_NOP && oa.regname == NUL
-		    && !VIsual_active)
+		    && !VIsual_active
+		    && !skip_term_loop)
 	    {
 		/* If terminal_loop() returns OK we got a key that is handled
 		 * in Normal model.  With FAIL we first need to position the
@@ -1349,7 +1356,12 @@ main_loop(
 	    }
 	    else
 #endif
+	    {
+#ifdef FEAT_TERMINAL
+		skip_term_loop = FALSE;
+#endif
 		normal_cmd(&oa, TRUE);
+	    }
 	}
     }
 }
@@ -1383,11 +1395,6 @@ getout_preserve_modified(int exitval)
     void
 getout(int exitval)
 {
-    tabpage_T	*tp;
-    tabpage_T	*next_tp;
-    buf_T	*buf;
-    win_T	*wp;
-
     exiting = TRUE;
 #if defined(FEAT_JOB_CHANNEL)
     ch_log(NULL, "Exiting...");
@@ -1416,6 +1423,11 @@ getout(int exitval)
 
     if (v_dying <= 1)
     {
+	tabpage_T	*tp;
+	tabpage_T	*next_tp;
+	buf_T		*buf;
+	win_T		*wp;
+
 	/* Trigger BufWinLeave for all windows, but only once per buffer. */
 	for (tp = first_tabpage; tp != NULL; tp = next_tp)
 	{
@@ -2014,6 +2026,7 @@ command_line_scan(mparm_T *parmp)
 #endif
 		break;
 
+	    case '?':		/* "-?" give help message (for MS-Windows) */
 	    case 'h':		/* "-h" give help message */
 #ifdef FEAT_GUI_GNOME
 		/* Tell usage() to exit for "gvim". */
@@ -3208,6 +3221,7 @@ mainerr(
     reset_signals();		/* kill us with CTRL-C here, if you like */
 #endif
 
+    init_longVersion();
     mch_errmsg(longVersion);
     mch_errmsg("\n");
     mch_errmsg(_(main_errors[n]));
@@ -3261,8 +3275,9 @@ usage(void)
     reset_signals();		/* kill us with CTRL-C here, if you like */
 #endif
 
+    init_longVersion();
     mch_msg(longVersion);
-    mch_msg(_("\n\nusage:"));
+    mch_msg(_("\n\nUsage:"));
     for (i = 0; ; ++i)
     {
 	mch_msg(_(" vim [arguments] "));
@@ -3319,7 +3334,7 @@ usage(void)
     main_msg(_("-dev <device>\t\tUse <device> for I/O"));
 #endif
 #ifdef FEAT_ARABIC
-    main_msg(_("-A\t\t\tstart in Arabic mode"));
+    main_msg(_("-A\t\t\tStart in Arabic mode"));
 #endif
 #ifdef FEAT_RIGHTLEFT
     main_msg(_("-H\t\t\tStart in Hebrew mode"));

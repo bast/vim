@@ -5,7 +5,7 @@ add_test(
   NAME
     test1
   COMMAND
-    ${CMAKE_COMMAND} -D VIM_EXECUTABLE=${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}/vim
+    ${CMAKE_COMMAND} -D VIM_EXECUTABLE=$<TARGET_FILE:vim>
                      -D WORKING_DIR=${CMAKE_CURRENT_LIST_DIR}
                      -D TEST_SCRIPT=test1
                      -P ${CMAKE_CURRENT_LIST_DIR}/test.cmake

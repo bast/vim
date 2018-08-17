@@ -65,8 +65,9 @@
 /*
  * GUIs that support dropping files on a running Vim.
  */
-#if defined(FEAT_GUI_MSWIN) || defined(FEAT_GUI_MAC) \
-	|| defined(FEAT_GUI_GTK)
+#if (defined(FEAT_DND) && defined(FEAT_GUI_GTK)) \
+	|| defined(FEAT_GUI_MSWIN) \
+	|| defined(FEAT_GUI_MAC)
 # define HAVE_DROP_FILE
 #endif
 
@@ -564,3 +565,7 @@ typedef enum
 #  define FUNC2GENERIC(func) G_CALLBACK(func)
 # endif
 #endif /* FEAT_GUI_GTK */
+
+#if defined(UNIX) && !defined(FEAT_GUI_MAC)
+# define GUI_MAY_FORK
+#endif

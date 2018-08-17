@@ -2,9 +2,9 @@
 # these could be extended to other vendors
 # and also localized to the scope of individual targets
 if(CMAKE_C_COMPILER_ID MATCHES GNU)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
-    set(CMAKE_C_FLAGS_RELEASE "-O2")
-    set(CMAKE_C_FLAGS_DEBUG "-O0")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
+  set(CMAKE_C_FLAGS_RELEASE "-O2")
+  set(CMAKE_C_FLAGS_DEBUG "-O0")
 endif()
 
 # generate config.h, pathdef.c, and osdef.h
@@ -21,7 +21,7 @@ add_executable(
 target_compile_definitions(
   vim
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 add_library(basic_sources "")
@@ -49,12 +49,13 @@ target_include_directories(
   PRIVATE
     ${PROJECT_SOURCE_DIR}/src/proto
     ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
   )
 
 target_compile_definitions(
   basic_sources
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 target_link_libraries(
@@ -85,12 +86,13 @@ target_include_directories(
   extra_sources
   PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/proto
+    ${CMAKE_CURRENT_BINARY_DIR}
   )
 
 target_compile_definitions(
   extra_sources
   PRIVATE
-    -DHAVE_CONFIG_H
+    "HAVE_CONFIG_H"
   )
 
 target_link_libraries(
@@ -120,7 +122,7 @@ if(X11_FOUND)
 endif()
 
 # a couple of more system libraries that the code requires
-foreach(_library Xt SM m tinfo acl gpm dl)
+foreach(_library IN ITEMS Xt SM m tinfo acl gpm dl)
   find_library(_${_library}_found ${_library} REQUIRED)
   if(_${_library}_found)
     target_link_libraries(

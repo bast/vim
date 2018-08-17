@@ -909,7 +909,8 @@ ex_diffpatch(exarg_T *eap)
     if (cmdmod.browse)
     {
 	browseFile = do_browse(0, (char_u *)_("Patch file"),
-			 eap->arg, NULL, NULL, BROWSE_FILTER_ALL_FILES, NULL);
+			 eap->arg, NULL, NULL,
+			 (char_u *)_(BROWSE_FILTER_ALL_FILES), NULL);
 	if (browseFile == NULL)
 	    return;		/* operation cancelled */
 	eap->arg = browseFile;
@@ -2140,6 +2141,13 @@ nv_diffgetput(int put, long count)
     exarg_T	ea;
     char_u	buf[30];
 
+#ifdef FEAT_JOB_CHANNEL
+    if (bt_prompt(curbuf))
+    {
+	vim_beep(BO_OPER);
+	return;
+    }
+#endif
     if (count == 0)
 	ea.arg = (char_u *)"";
     else

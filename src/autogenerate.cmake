@@ -8,7 +8,7 @@ function(generate_config_h)
   set(TERMINFO 1)
   set(UNIX 1)
 
-  # FIXME this is hardcoded to keep the discussion in the book chapter
+  # this is hardcoded to keep the discussion in the book chapter
   # which describes the migration to CMake simpler
   set(TIME_WITH_SYS_TIME 1)
   set(RETSIGTYPE void)
@@ -23,7 +23,7 @@ function(generate_config_h)
   check_type_size("off_t" SIZEOF_OFF_T)
 
   foreach(
-    _function
+    _function IN ITEMS
     fchdir fchown fchmod fsync getcwd getpseudotty
     getpwent getpwnam getpwuid getrlimit gettimeofday getwd lstat
     memset mkdtemp nanosleep opendir putenv qsort readlink select setenv
@@ -44,7 +44,7 @@ function(generate_config_h)
   endif()
 
   foreach(
-    _header
+    _header IN ITEMS
     setjmp.h dirent.h
     stdint.h stdlib.h string.h
     sys/select.h sys/utsname.h termcap.h fcntl.h
@@ -92,7 +92,8 @@ function(generate_config_h)
 
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/config.h.cmake.in
-    ${CMAKE_CURRENT_LIST_DIR}/auto/config.h
+    ${CMAKE_CURRENT_BINARY_DIR}/auto/config.h
+    @ONLY
     )
 endfunction()
 
@@ -121,7 +122,8 @@ function(generate_pathdef_c)
 
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/pathdef.c.in
-    ${CMAKE_CURRENT_LIST_DIR}/auto/pathdef.c
+    ${CMAKE_CURRENT_BINARY_DIR}/auto/pathdef.c
+    @ONLY
     )
 endfunction()
 
@@ -129,7 +131,8 @@ function(generate_osdef_h)
   find_program(BASH_EXECUTABLE bash)
 
   execute_process(
-    COMMAND ${BASH_EXECUTABLE} osdef.sh
+    COMMAND
+      ${BASH_EXECUTABLE} osdef.sh ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_LIST_DIR}
     )

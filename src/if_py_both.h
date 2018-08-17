@@ -88,8 +88,12 @@ static PyObject *py_getcwd;
 static PyObject *vim_module;
 static PyObject *vim_special_path_object;
 
+#if PY_VERSION_HEX >= 0x030700f0
+static PyObject *py_find_spec;
+#else
 static PyObject *py_find_module;
 static PyObject *py_load_module;
+#endif
 
 static PyObject *VimError;
 
@@ -539,27 +543,58 @@ PythonIO_Init_io(void)
     return 0;
 }
 
+#if PY_VERSION_HEX < 0x030700f0
+static PyObject *call_load_module(char *name, int len, PyObject *find_module_result);
+
 typedef struct
 {
     PyObject_HEAD
-    PyObject	*module;
+    char	*fullname;
+    PyObject	*result;
 } LoaderObject;
 static PyTypeObject LoaderType;
 
     static void
 LoaderDestructor(LoaderObject *self)
 {
-    Py_DECREF(self->module);
+    vim_free(self->fullname);
+    Py_XDECREF(self->result);
     DESTRUCTOR_FINISH(self);
 }
 
     static PyObject *
 LoaderLoadModule(LoaderObject *self, PyObject *args UNUSED)
 {
-    PyObject	*ret = self->module;
+    char	*fullname = self->fullname;
+    PyObject	*result = self->result;
+    PyObject	*module;
 
-    Py_INCREF(ret);
-    return ret;
+    if (!fullname)
+    {
+	module = result ? result : Py_None;
+	Py_INCREF(module);
+	return module;
+    }
+
+    module = call_load_module(fullname, (int)STRLEN(fullname), result);
+
+    self->fullname = NULL;
+    self->result = module;
+
+    vim_free(fullname);
+    Py_DECREF(result);
+
+    if (!module)
+    {
+	if (PyErr_Occurred())
+	    return NULL;
+
+	Py_INCREF(Py_None);
+	return Py_None;
+    }
+
+    Py_INCREF(module);
+    return module;
 }
 
 static struct PyMethodDef LoaderMethods[] = {
@@ -567,6 +602,7 @@ static struct PyMethodDef LoaderMethods[] = {
     {"load_module", (PyCFunction)LoaderLoadModule,	METH_VARARGS,	""},
     { NULL,	    NULL,				0,		NULL}
 };
+#endif
 
 /* Check to see whether a Vim error has been reported, or a keyboard
  * interrupt has been detected.
@@ -1163,6 +1199,37 @@ Vim_GetPaths(PyObject *self UNUSED)
     return ret;
 }
 
+#if PY_VERSION_HEX >= 0x030700f0
+    static PyObject *
+FinderFindSpec(PyObject *self, PyObject *args)
+{
+    char	*fullname;
+    PyObject	*paths;
+    PyObject	*target = Py_None;
+    PyObject	*spec;
+
+    if (!PyArg_ParseTuple(args, "s|O", &fullname, &target))
+	return NULL;
+
+    if (!(paths = Vim_GetPaths(self)))
+	return NULL;
+
+    spec = PyObject_CallFunction(py_find_spec, "sNN", fullname, paths, target);
+
+    Py_DECREF(paths);
+
+    if (!spec)
+    {
+	if (PyErr_Occurred())
+	    return NULL;
+
+	Py_INCREF(Py_None);
+	return Py_None;
+    }
+
+    return spec;
+}
+#else
     static PyObject *
 call_load_module(char *name, int len, PyObject *find_module_result)
 {
@@ -1215,7 +1282,11 @@ find_module(char *fullname, char *tail, PyObject *new_path)
 
 	if (!(find_module_result = PyObject_CallFunction(py_find_module,
 			"s#O", tail, partlen, new_path)))
+	{
+	    if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_ImportError))
+		PyErr_Clear();
 	    return NULL;
+	}
 
 	if (!(module = call_load_module(
 			fullname,
@@ -1236,30 +1307,23 @@ find_module(char *fullname, char *tail, PyObject *new_path)
 
 	Py_DECREF(module);
 
-	module = find_module(fullname, dot + 1, newest_path);
+	find_module_result = find_module(fullname, dot + 1, newest_path);
 
 	Py_DECREF(newest_path);
 
-	return module;
+	return find_module_result;
     }
     else
     {
 	if (!(find_module_result = PyObject_CallFunction(py_find_module,
 			"sO", tail, new_path)))
-	    return NULL;
-
-	if (!(module = call_load_module(
-			fullname,
-			(int)STRLEN(fullname),
-			find_module_result)))
 	{
-	    Py_DECREF(find_module_result);
+	    if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_ImportError))
+		PyErr_Clear();
 	    return NULL;
 	}
 
-	Py_DECREF(find_module_result);
-
-	return module;
+	return find_module_result;
     }
 }
 
@@ -1267,7 +1331,7 @@ find_module(char *fullname, char *tail, PyObject *new_path)
 FinderFindModule(PyObject *self, PyObject *args)
 {
     char	*fullname;
-    PyObject	*module;
+    PyObject	*result;
     PyObject	*new_path;
     LoaderObject	*loader;
 
@@ -1277,34 +1341,39 @@ FinderFindModule(PyObject *self, PyObject *args)
     if (!(new_path = Vim_GetPaths(self)))
 	return NULL;
 
-    module = find_module(fullname, fullname, new_path);
+    result = find_module(fullname, fullname, new_path);
 
     Py_DECREF(new_path);
 
-    if (!module)
+    if (!result)
     {
 	if (PyErr_Occurred())
-	{
-	    if (PyErr_ExceptionMatches(PyExc_ImportError))
-		PyErr_Clear();
-	    else
-		return NULL;
-	}
+	    return NULL;
 
 	Py_INCREF(Py_None);
 	return Py_None;
     }
 
-    if (!(loader = PyObject_NEW(LoaderObject, &LoaderType)))
+    if (!(fullname = (char *)vim_strsave((char_u *)fullname)))
     {
-	Py_DECREF(module);
+	Py_DECREF(result);
+	PyErr_NoMemory();
 	return NULL;
     }
 
-    loader->module = module;
+    if (!(loader = PyObject_NEW(LoaderObject, &LoaderType)))
+    {
+	vim_free(fullname);
+	Py_DECREF(result);
+	return NULL;
+    }
+
+    loader->fullname = fullname;
+    loader->result = result;
 
     return (PyObject *) loader;
 }
+#endif
 
     static PyObject *
 VimPathHook(PyObject *self UNUSED, PyObject *args)
@@ -1336,7 +1405,11 @@ static struct PyMethodDef VimMethods[] = {
     {"chdir",	    (PyCFunction)VimChdir,	METH_VARARGS|METH_KEYWORDS,	"Change directory"},
     {"fchdir",	    (PyCFunction)VimFchdir,	METH_VARARGS|METH_KEYWORDS,	"Change directory"},
     {"foreach_rtp", VimForeachRTP,		METH_O,				"Call given callable for each path in &rtp"},
+#if PY_VERSION_HEX >= 0x030700f0
+    {"find_spec",   FinderFindSpec,		METH_VARARGS,			"Internal use only, returns spec object for any input it receives"},
+#else
     {"find_module", FinderFindModule,		METH_VARARGS,			"Internal use only, returns loader object for any input it receives"},
+#endif
     {"path_hook",   VimPathHook,		METH_VARARGS,			"Hook function to install in sys.path_hooks"},
     {"_get_paths",  (PyCFunction)Vim_GetPaths,	METH_NOARGS,			"Get &rtp-based additions to sys.path"},
     { NULL,	    NULL,			0,				NULL}
@@ -1832,7 +1905,6 @@ DictionaryAssItem(
 	    PyErr_NoMemory();
 	    return -1;
 	}
-	di->di_tv.v_lock = 0;
 	di->di_tv.v_type = VAR_UNKNOWN;
 
 	if (dict_add(dict, di) == FAIL)
@@ -2038,7 +2110,6 @@ DictionaryUpdate(DictionaryObject *self, PyObject *args, PyObject *kwargs)
 		    PyErr_NoMemory();
 		    return NULL;
 		}
-		di->di_tv.v_lock = 0;
 		di->di_tv.v_type = VAR_UNKNOWN;
 
 		valObject = PySequence_Fast_GET_ITEM(fast, 1);
@@ -3836,9 +3907,20 @@ get_firstwin(TabPageObject *tabObject)
     else
 	return firstwin;
 }
+
+// Use the same order as in the WindowAttr() function.
 static char *WindowAttrs[] = {
-    "buffer", "cursor", "height", "vars", "options", "number", "row", "col",
-    "tabpage", "valid",
+    "buffer",
+    "cursor",
+    "height",
+    "row",
+    "width",
+    "col",
+    "vars",
+    "options",
+    "number",
+    "tabpage",
+    "valid",
     NULL
 };
 
@@ -3934,6 +4016,7 @@ WindowSetattr(WindowObject *self, char *name, PyObject *valObject)
 
 	self->win->w_cursor.lnum = lnum;
 	self->win->w_cursor.col = col;
+	self->win->w_set_curswant = TRUE;
 #ifdef FEAT_VIRTUALEDIT
 	self->win->w_cursor.coladd = 0;
 #endif
@@ -5841,7 +5924,6 @@ pydict_to_tv(PyObject *obj, typval_T *tv, PyObject *lookup_dict)
 	    dict_unref(dict);
 	    return -1;
 	}
-	di->di_tv.v_lock = 0;
 
 	if (_ConvertFromPyObject(valObject, &di->di_tv, lookup_dict) == -1)
 	{
@@ -5939,7 +6021,6 @@ pymap_to_tv(PyObject *obj, typval_T *tv, PyObject *lookup_dict)
 	    PyErr_NoMemory();
 	    return -1;
 	}
-	di->di_tv.v_lock = 0;
 
 	if (_ConvertFromPyObject(valObject, &di->di_tv, lookup_dict) == -1)
 	{
@@ -6333,9 +6414,12 @@ init_structs(void)
     OutputType.tp_alloc = call_PyType_GenericAlloc;
     OutputType.tp_new = call_PyType_GenericNew;
     OutputType.tp_free = call_PyObject_Free;
+    OutputType.tp_base = &PyStdPrinter_Type;
 #else
     OutputType.tp_getattr = (getattrfunc)OutputGetattr;
     OutputType.tp_setattr = (setattrfunc)OutputSetattr;
+    // Disabled, because this causes a crash in test86
+    // OutputType.tp_base = &PyFile_Type;
 #endif
 
     vim_memset(&IterType, 0, sizeof(IterType));
@@ -6535,6 +6619,7 @@ init_structs(void)
     OptionsType.tp_traverse = (traverseproc)OptionsTraverse;
     OptionsType.tp_clear = (inquiry)OptionsClear;
 
+#if PY_VERSION_HEX < 0x030700f0
     vim_memset(&LoaderType, 0, sizeof(LoaderType));
     LoaderType.tp_name = "vim.Loader";
     LoaderType.tp_basicsize = sizeof(LoaderObject);
@@ -6542,6 +6627,7 @@ init_structs(void)
     LoaderType.tp_doc = "vim message object";
     LoaderType.tp_methods = LoaderMethods;
     LoaderType.tp_dealloc = (destructor)LoaderDestructor;
+#endif
 
 #if PY_MAJOR_VERSION >= 3
     vim_memset(&vimmodule, 0, sizeof(vimmodule));
@@ -6573,7 +6659,9 @@ init_types(void)
     PYTYPE_READY(FunctionType);
     PYTYPE_READY(OptionsType);
     PYTYPE_READY(OutputType);
+#if PY_VERSION_HEX < 0x030700f0
     PYTYPE_READY(LoaderType);
+#endif
     return 0;
 }
 
@@ -6697,7 +6785,9 @@ static struct object_constant {
     {"List",       (PyObject *)&ListType},
     {"Function",   (PyObject *)&FunctionType},
     {"Options",    (PyObject *)&OptionsType},
+#if PY_VERSION_HEX < 0x030700f0
     {"_Loader",    (PyObject *)&LoaderType},
+#endif
 };
 
 #define ADD_OBJECT(m, name, obj) \
@@ -6719,6 +6809,10 @@ populate_module(PyObject *m)
     PyObject	*other_module;
     PyObject	*attr;
     PyObject	*imp;
+#if PY_VERSION_HEX >= 0x030700f0
+    PyObject	*dict;
+    PyObject	*cls;
+#endif
 
     for (i = 0; i < (int)(sizeof(numeric_constants)
 					   / sizeof(struct numeric_constant));
@@ -6791,6 +6885,28 @@ populate_module(PyObject *m)
 
     ADD_OBJECT(m, "VIM_SPECIAL_PATH", vim_special_path_object);
 
+#if PY_VERSION_HEX >= 0x030700f0
+    if (!(imp = PyImport_ImportModule("importlib.machinery")))
+	return -1;
+
+    dict = PyModule_GetDict(imp);
+
+    if (!(cls = PyDict_GetItemString(dict, "PathFinder")))
+    {
+	Py_DECREF(imp);
+	return -1;
+    }
+
+    if (!(py_find_spec = PyObject_GetAttrString(cls, "find_spec")))
+    {
+	Py_DECREF(imp);
+	return -1;
+    }
+
+    Py_DECREF(imp);
+
+    ADD_OBJECT(m, "_find_spec", py_find_spec);
+#else
     if (!(imp = PyImport_ImportModule("imp")))
 	return -1;
 
@@ -6811,6 +6927,7 @@ populate_module(PyObject *m)
 
     ADD_OBJECT(m, "_find_module", py_find_module);
     ADD_OBJECT(m, "_load_module", py_load_module);
+#endif
 
     return 0;
 }

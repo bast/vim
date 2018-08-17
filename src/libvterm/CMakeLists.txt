@@ -29,9 +29,9 @@ target_include_directories(
 target_compile_definitions(
   libvterm
   PRIVATE
-    -DHAVE_CONFIG_H
-    -DINLINE=
-    -DVSNPRINTF=vim_vsnprintf
-    -DIS_COMBINING_FUNCTION=utf_iscomposing_uint
-    -DWCWIDTH_FUNCTION=utf_uint2cells
+    "HAVE_CONFIG_H"
+    "INLINE="
+    "VSNPRINTF=vim_vsnprintf"
+    "IS_COMBINING_FUNCTION=utf_iscomposing_uint"
+    "WCWIDTH_FUNCTION=utf_uint2cells"
   )

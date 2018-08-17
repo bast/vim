@@ -3327,6 +3327,12 @@ syn_regexec(
 	profile_start(&pt);
 #endif
 
+    if (rmp->regprog == NULL)
+	// This can happen if a previous call to vim_regexec_multi() tried to
+	// use the NFA engine, which resulted in NFA_TOO_EXPENSIVE, and
+	// compiling the pattern with the other engine fails.
+	return FALSE;
+
     rmp->rmm_maxcol = syn_buf->b_p_smc;
     r = vim_regexec_multi(rmp, syn_win, syn_buf, lnum, col,
 #ifdef FEAT_RELTIME
@@ -3349,8 +3355,11 @@ syn_regexec(
     }
 #endif
 #ifdef FEAT_RELTIME
-    if (timed_out)
+    if (timed_out && !syn_win->w_s->b_syn_slow)
+    {
 	syn_win->w_s->b_syn_slow = TRUE;
+	MSG(_("'redrawtime' exceeded, syntax highlighting disabled"));
+    }
 #endif
 
     if (r > 0)
@@ -3569,11 +3578,13 @@ syn_cmd_iskeyword(exarg_T *eap, int syncing UNUSED)
     if (*arg == NUL)
     {
 	MSG_PUTS("\n");
-	MSG_PUTS(_("syntax iskeyword "));
 	if (curwin->w_s->b_syn_isk != empty_option)
+	{
+	    MSG_PUTS(_("syntax iskeyword "));
 	    msg_outtrans(curwin->w_s->b_syn_isk);
+	}
 	else
-	    msg_outtrans((char_u *)"not set");
+	    msg_outtrans((char_u *)_("syntax iskeyword not set"));
     }
     else
     {
@@ -7224,6 +7235,8 @@ load_colors(char_u *name)
     buf = alloc((unsigned)(STRLEN(name) + 12));
     if (buf != NULL)
     {
+	apply_autocmds(EVENT_COLORSCHEMEPRE, name,
+					       curbuf->b_fname, FALSE, curbuf);
 	sprintf((char *)buf, "colors/%s.vim", name);
 	retval = source_runtime(buf, DIP_START + DIP_OPT);
 	vim_free(buf);
@@ -9852,7 +9865,9 @@ syn_id2colors(int hl_id, guicolor_T *fgp, guicolor_T *bgp)
 }
 #endif
 
-#if defined(FEAT_TERMINAL) || defined(PROTO)
+#if (defined(WIN3264) \
+	&& !defined(FEAT_GUI_W32) \
+	&& defined(FEAT_TERMGUICOLORS)) || defined(PROTO)
     void
 syn_id2cterm_bg(int hl_id, int *fgp, int *bgp)
 {

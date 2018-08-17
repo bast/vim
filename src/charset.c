@@ -812,7 +812,16 @@ vim_strnsize(char_u *s, int len)
  * Also see getvcol() below.
  */
 
-#define RET_WIN_BUF_CHARTABSIZE(wp, buf, p, col) \
+#ifdef FEAT_VARTABS
+# define RET_WIN_BUF_CHARTABSIZE(wp, buf, p, col) \
+    if (*(p) == TAB && (!(wp)->w_p_list || lcs_tab1)) \
+    { \
+	return tabstop_padding(col, (buf)->b_p_ts, (buf)->b_p_vts_array); \
+    } \
+    else \
+	return ptr2cells(p);
+#else
+# define RET_WIN_BUF_CHARTABSIZE(wp, buf, p, col) \
     if (*(p) == TAB && (!(wp)->w_p_list || lcs_tab1)) \
     { \
 	int ts; \
@@ -821,6 +830,7 @@ vim_strnsize(char_u *s, int len)
     } \
     else \
 	return ptr2cells(p);
+#endif
 
     int
 chartabsize(char_u *p, colnr_T col)
@@ -1221,8 +1231,13 @@ win_nolbr_chartabsize(
 
     if (*s == TAB && (!wp->w_p_list || lcs_tab1))
     {
+# ifdef FEAT_VARTABS
+	return tabstop_padding(col, wp->w_buffer->b_p_ts,
+				    wp->w_buffer->b_p_vts_array);
+# else
 	n = wp->w_buffer->b_p_ts;
 	return (int)(n - (col % n));
+# endif
     }
     n = ptr2cells(s);
     /* Add one cell for a double-width character in the last column of the
@@ -1282,6 +1297,9 @@ getvcol(
     char_u	*line;		/* start of the line */
     int		incr;
     int		head;
+#ifdef FEAT_VARTABS
+    int		*vts = wp->w_buffer->b_p_vts_array;
+#endif
     int		ts = wp->w_buffer->b_p_ts;
     int		c;
 
@@ -1332,7 +1350,11 @@ getvcol(
 	    }
 	    /* A tab gets expanded, depending on the current column */
 	    if (c == TAB)
+#ifdef FEAT_VARTABS
+		incr = tabstop_padding(vcol, ts, vts);
+#else
 		incr = ts - (vcol % ts);
+#endif
 	    else
 	    {
 #ifdef FEAT_MBYTE
@@ -1417,7 +1439,12 @@ getvcol_nolist(pos_T *posp)
     colnr_T	vcol;
 
     curwin->w_p_list = FALSE;
-    getvcol(curwin, posp, NULL, &vcol, NULL);
+#ifdef FEAT_VIRTUALEDIT
+    if (posp->coladd)
+	getvvcol(curwin, posp, NULL, &vcol, NULL);
+    else
+#endif
+	getvcol(curwin, posp, NULL, &vcol, NULL);
     curwin->w_p_list = list_save;
     return vcol;
 }
@@ -1787,7 +1814,6 @@ skiptowhite(char_u *p)
     return p;
 }
 
-#if defined(FEAT_LISTCMDS) || defined(FEAT_SIGNS) || defined(PROTO)
 /*
  * skiptowhite_esc: Like skiptowhite(), but also skip escaped chars
  */
@@ -1802,7 +1828,6 @@ skiptowhite_esc(char_u *p)
     }
     return p;
 }
-#endif
 
 /*
  * Getdigits: Get a number from a string and skip over it.
@@ -1925,8 +1950,8 @@ vim_str2nr(
 	while ('0' <= *ptr && *ptr <= '1')
 	{
 	    /* avoid ubsan error for overflow */
-	    if (un < UVARNUM_MAX / 2)
-		un = 2 * un + (unsigned long)(*ptr - '0');
+	    if (un <= UVARNUM_MAX / 2)
+		un = 2 * un + (uvarnumber_T)(*ptr - '0');
 	    else
 		un = UVARNUM_MAX;
 	    ++ptr;
@@ -1940,7 +1965,7 @@ vim_str2nr(
 	while ('0' <= *ptr && *ptr <= '7')
 	{
 	    /* avoid ubsan error for overflow */
-	    if (un < UVARNUM_MAX / 8)
+	    if (un <= UVARNUM_MAX / 8)
 		un = 8 * un + (uvarnumber_T)(*ptr - '0');
 	    else
 		un = UVARNUM_MAX;
@@ -1957,7 +1982,7 @@ vim_str2nr(
 	while (vim_isxdigit(*ptr))
 	{
 	    /* avoid ubsan error for overflow */
-	    if (un < UVARNUM_MAX / 16)
+	    if (un <= UVARNUM_MAX / 16)
 		un = 16 * un + (uvarnumber_T)hex2nr(*ptr);
 	    else
 		un = UVARNUM_MAX;
@@ -1971,9 +1996,12 @@ vim_str2nr(
 	/* decimal */
 	while (VIM_ISDIGIT(*ptr))
 	{
+	    uvarnumber_T    digit = (uvarnumber_T)(*ptr - '0');
+
 	    /* avoid ubsan error for overflow */
-	    if (un < UVARNUM_MAX / 10)
-		un = 10 * un + (uvarnumber_T)(*ptr - '0');
+	    if (un < UVARNUM_MAX / 10
+		    || (un == UVARNUM_MAX / 10 && digit <= UVARNUM_MAX % 10))
+		un = 10 * un + digit;
 	    else
 		un = UVARNUM_MAX;
 	    ++ptr;

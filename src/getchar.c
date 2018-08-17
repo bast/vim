@@ -844,6 +844,14 @@ start_redo(long count, int old_redo)
 	if (c >= '1' && c < '9')
 	    ++c;
 	add_char_buff(&readbuf2, c);
+
+	/* the expression register should be re-evaluated */
+	if (c == '=')
+	{
+	    add_char_buff(&readbuf2, CAR);
+	    cmd_silent = TRUE;
+	}
+
 	c = read_redo(FALSE, old_redo);
     }
 
@@ -1238,27 +1246,43 @@ del_typebuf(int len, int offset)
     static void
 gotchars(char_u *chars, int len)
 {
-    char_u	*s = chars;
-    int		c;
-    char_u	buf[2];
-    int		todo = len;
+    char_u		*s = chars;
+    int			i;
+    static char_u	buf[4];
+    static int		buflen = 0;
+    int			todo = len;
 
-    /* remember how many chars were last recorded */
-    if (Recording)
-	last_recorded_len += len;
-
-    buf[1] = NUL;
     while (todo--)
     {
-	/* Handle one byte at a time; no translation to be done. */
-	c = *s++;
-	updatescript(c);
+	buf[buflen++] = *s++;
 
-	if (Recording)
+	// When receiving a special key sequence, store it until we have all
+	// the bytes and we can decide what to do with it.
+	if (buflen == 1 && buf[0] == K_SPECIAL)
+	    continue;
+	if (buflen == 2)
+	    continue;
+	if (buflen == 3 && buf[1] == KS_EXTRA
+		       && (buf[2] == KE_FOCUSGAINED || buf[2] == KE_FOCUSLOST))
 	{
-	    buf[0] = c;
-	    add_buff(&recordbuff, buf, 1L);
+	    // Drop K_FOCUSGAINED and K_FOCUSLOST, they are not useful in a
+	    // recording.
+	    buflen = 0;
+	    continue;
 	}
+
+	/* Handle one byte at a time; no translation to be done. */
+	for (i = 0; i < buflen; ++i)
+	    updatescript(buf[i]);
+
+	if (reg_recording != 0)
+	{
+	    buf[buflen] = NUL;
+	    add_buff(&recordbuff, buf, (long)buflen);
+	    /* remember how many chars were last recorded */
+	    last_recorded_len += buflen;
+	}
+	buflen = 0;
     }
     may_sync_undo();
 
@@ -1686,18 +1710,18 @@ vgetc(void)
 	 * its ASCII equivalent */
 	switch (c)
 	{
-	    case K_KPLUS:		c = '+'; break;
-	    case K_KMINUS:		c = '-'; break;
-	    case K_KDIVIDE:		c = '/'; break;
+	    case K_KPLUS:	c = '+'; break;
+	    case K_KMINUS:	c = '-'; break;
+	    case K_KDIVIDE:	c = '/'; break;
 	    case K_KMULTIPLY:	c = '*'; break;
-	    case K_KENTER:		c = CAR; break;
+	    case K_KENTER:	c = CAR; break;
 	    case K_KPOINT:
 #ifdef WIN32
-				    /* Can be either '.' or a ',', *
-				     * depending on the type of keypad. */
-				    c = MapVirtualKey(VK_DECIMAL, 2); break;
+				// Can be either '.' or a ',',
+				// depending on the type of keypad.
+				c = MapVirtualKey(VK_DECIMAL, 2); break;
 #else
-				    c = '.'; break;
+				c = '.'; break;
 #endif
 	    case K_K0:		c = '0'; break;
 	    case K_K1:		c = '1'; break;
@@ -2007,7 +2031,7 @@ vgetorpeek(int advance)
     init_typebuf();
     start_stuff();
     if (advance && typebuf.tb_maplen == 0)
-	Exec_reg = FALSE;
+	reg_executing = 0;
     do
     {
 /*
@@ -2059,7 +2083,7 @@ vgetorpeek(int advance)
 		    c = inchar(typebuf.tb_buf, typebuf.tb_buflen - 1, 0L);
 		    /*
 		     * If inchar() returns TRUE (script file was active) or we
-		     * are inside a mapping, get out of insert mode.
+		     * are inside a mapping, get out of Insert mode.
 		     * Otherwise we behave like having gotten a CTRL-C.
 		     * As a result typing CTRL-C in insert mode will
 		     * really insert a CTRL-C.
@@ -2755,6 +2779,10 @@ vgetorpeek(int advance)
 		     * cmdline window. */
 		    if (p_im && (State & INSERT))
 			c = Ctrl_L;
+#ifdef FEAT_TERMINAL
+		    else if (terminal_is_active())
+			c = K_CANCEL;
+#endif
 		    else if ((State & CMDLINE)
 #ifdef FEAT_CMDWIN
 			    || (cmdwin_type > 0 && tc == ESC)
@@ -2844,6 +2872,11 @@ vgetorpeek(int advance)
 /*
  * get a character: 3. from the user - get it
  */
+		if (typebuf.tb_len == 0)
+		    // timedout may have been set while waiting for a mapping
+		    // that has a <Nop> RHS.
+		    timedout = FALSE;
+
 		wait_tb_len = typebuf.tb_len;
 		c = inchar(typebuf.tb_buf + typebuf.tb_off + typebuf.tb_len,
 			typebuf.tb_buflen - typebuf.tb_off - typebuf.tb_len - 1,
@@ -2898,8 +2931,8 @@ vgetorpeek(int advance)
 	    }	    /* for (;;) */
 	}	/* if (!character from stuffbuf) */
 
-			/* if advance is FALSE don't loop on NULs */
-    } while (c < 0 || (advance && c == NUL));
+	/* if advance is FALSE don't loop on NULs */
+    } while ((c < 0 && c != K_CANCEL) || (advance && c == NUL));
 
     /*
      * The "INSERT" message is taken care of here:
@@ -4119,7 +4152,7 @@ map_to_exists_mode(char_u *rhs, int mode, int abbr)
     mapblock_T	*mp;
     int		hash;
 # ifdef FEAT_LOCALMAP
-    int		expand_buffer = FALSE;
+    int		exp_buffer = FALSE;
 
     validate_maphash();
 
@@ -4134,14 +4167,14 @@ map_to_exists_mode(char_u *rhs, int mode, int abbr)
 		if (hash > 0)		/* there is only one abbr list */
 		    break;
 #ifdef FEAT_LOCALMAP
-		if (expand_buffer)
+		if (exp_buffer)
 		    mp = curbuf->b_first_abbr;
 		else
 #endif
 		    mp = first_abbr;
 	    }
 # ifdef FEAT_LOCALMAP
-	    else if (expand_buffer)
+	    else if (exp_buffer)
 		mp = curbuf->b_maphash[hash];
 # endif
 	    else
@@ -4154,9 +4187,9 @@ map_to_exists_mode(char_u *rhs, int mode, int abbr)
 	    }
 	}
 # ifdef FEAT_LOCALMAP
-	if (expand_buffer)
+	if (exp_buffer)
 	    break;
-	expand_buffer = TRUE;
+	exp_buffer = TRUE;
     }
 # endif
 
@@ -4395,7 +4428,9 @@ ExpandMappings(
 
 /*
  * Check for an abbreviation.
- * Cursor is at ptr[col]. When inserting, mincol is where insert started.
+ * Cursor is at ptr[col].
+ * When inserting, mincol is where insert started.
+ * For the command line, mincol is what is to be skipped over.
  * "c" is the character typed before check_abbr was called.  It may have
  * ABBR_OFF added to avoid prepending a CTRL-V to it.
  *
@@ -4519,10 +4554,12 @@ check_abbr(
 
 	    if (vim_strbyte(mp->m_keys, K_SPECIAL) != NULL)
 	    {
+		char_u *qe = vim_strsave(mp->m_keys);
+
 		/* might have CSI escaped mp->m_keys */
-		q = vim_strsave(mp->m_keys);
-		if (q != NULL)
+		if (qe != NULL)
 		{
+		    q = qe;
 		    vim_unescape_csi(q);
 		    qlen = (int)STRLEN(q);
 		}

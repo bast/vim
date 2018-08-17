@@ -37,8 +37,7 @@ static void gui_set_fg_color(char_u *name);
 static void gui_set_bg_color(char_u *name);
 static win_T *xy2win(int x, int y);
 
-#if defined(UNIX) && !defined(FEAT_GUI_MAC)
-# define MAY_FORK
+#ifdef GUI_MAY_FORK
 static void gui_do_fork(void);
 
 static int gui_read_child_pipe(int fd);
@@ -49,8 +48,7 @@ enum {
     GUI_CHILD_OK,
     GUI_CHILD_FAILED
 };
-
-#endif /* MAY_FORK */
+#endif
 
 static void gui_attempt_start(void);
 
@@ -88,14 +86,20 @@ gui_start(void)
 
     ++recursive;
 
-#ifdef MAY_FORK
+#ifdef GUI_MAY_FORK
     /*
      * Quit the current process and continue in the child.
      * Makes "gvim file" disconnect from the shell it was started in.
      * Don't do this when Vim was started with "-f" or the 'f' flag is present
      * in 'guioptions'.
+     * Don't do this when there is a running job, we can only get the status
+     * of a child from the parent.
      */
-    if (gui.dofork && !vim_strchr(p_go, GO_FORG) && recursive <= 1)
+    if (gui.dofork && !vim_strchr(p_go, GO_FORG) && recursive <= 1
+# ifdef FEAT_JOB_CHANNEL
+	    && !job_any_running()
+# endif
+	    )
     {
 	gui_do_fork();
     }
@@ -183,7 +187,7 @@ gui_attempt_start(void)
     --recursive;
 }
 
-#ifdef MAY_FORK
+#ifdef GUI_MAY_FORK
 
 /* for waitpid() */
 # if defined(HAVE_SYS_WAIT_H) || defined(HAVE_UNION_WAIT)
@@ -338,7 +342,7 @@ gui_read_child_pipe(int fd)
     return GUI_CHILD_FAILED;
 }
 
-#endif /* MAY_FORK */
+#endif /* GUI_MAY_FORK */
 
 /*
  * Call this when vim starts up, whether or not the GUI is started
@@ -741,7 +745,12 @@ gui_init(void)
 	/* Always create the Balloon Evaluation area, but disable it when
 	 * 'ballooneval' is off. */
 	if (balloonEval != NULL)
+	{
+# ifdef FEAT_VARTABS
+	    vim_free(balloonEval->vts);
+# endif
 	    vim_free(balloonEval);
+	}
 	balloonEvalForTerm = FALSE;
 # ifdef FEAT_GUI_GTK
 	balloonEval = gui_mch_create_beval_area(gui.drawarea, NULL,
@@ -3172,10 +3181,8 @@ button_set:
 	case SELECTMODE:	checkfor = MOUSE_VISUAL;	break;
 	case REPLACE:
 	case REPLACE+LANGMAP:
-# ifdef FEAT_VREPLACE
 	case VREPLACE:
 	case VREPLACE+LANGMAP:
-# endif
 	case INSERT:
 	case INSERT+LANGMAP:	checkfor = MOUSE_INSERT;	break;
 	case ASKMORE:
@@ -5169,8 +5176,6 @@ gui_update_screen(void)
 #endif
 
 #if defined(FIND_REPLACE_DIALOG) || defined(PROTO)
-static void concat_esc(garray_T *gap, char_u *text, int what);
-
 /*
  * Get the text to use in a find/replace dialog.  Uses the last search pattern
  * if the argument is empty.
@@ -5235,31 +5240,6 @@ get_find_dialog_text(
 }
 
 /*
- * Concatenate "text" to grow array "gap", escaping "what" with a backslash.
- */
-    static void
-concat_esc(garray_T *gap, char_u *text, int what)
-{
-    while (*text != NUL)
-    {
-#ifdef FEAT_MBYTE
-	int l = (*mb_ptr2len)(text);
-
-	if (l > 1)
-	{
-	    while (--l >= 0)
-		ga_append(gap, *text++);
-	    continue;
-	}
-#endif
-	if (*text == what)
-	    ga_append(gap, '\\');
-	ga_append(gap, *text);
-	++text;
-    }
-}
-
-/*
  * Handle the press of a button in the find-replace dialog.
  * Return TRUE when something was added to the input buffer.
  */
@@ -5301,10 +5281,11 @@ gui_do_findrepl(
 	ga_concat(&ga, (char_u *)"\\c");
     if (flags & FRD_WHOLE_WORD)
 	ga_concat(&ga, (char_u *)"\\<");
-    if (type == FRD_REPLACEALL || down)
-	concat_esc(&ga, find_text, '/');	/* escape slashes */
-    else
-	concat_esc(&ga, find_text, '?');	/* escape '?' */
+    /* escape / and \ */
+    p = vim_strsave_escaped(find_text, (char_u *)"/\\");
+    if (p != NULL)
+        ga_concat(&ga, p);
+    vim_free(p);
     if (flags & FRD_WHOLE_WORD)
 	ga_concat(&ga, (char_u *)"\\>");
 
@@ -5367,8 +5348,20 @@ gui_do_findrepl(
 	if (type == FRD_REPLACE)
 	    searchflags += SEARCH_START;
 	i = msg_scroll;
-	(void)do_search(NULL, down ? '/' : '?', ga.ga_data, 1L,
-						      searchflags, NULL, NULL);
+	if (down)
+	{
+	    (void)do_search(NULL, '/', ga.ga_data, 1L, searchflags, NULL, NULL);
+	}
+	else
+	{
+	    /* We need to escape '?' if and only if we are searching in the up
+	     * direction */
+	    p = vim_strsave_escaped(ga.ga_data, (char_u *)"?");
+	    if (p != NULL)
+	        (void)do_search(NULL, '?', p, 1L, searchflags, NULL, NULL);
+	    vim_free(p);
+	}
+
 	msg_scroll = i;	    /* don't let an error message set msg_scroll */
     }
 
@@ -5390,10 +5383,7 @@ gui_do_findrepl(
 
 #endif
 
-#if (defined(FEAT_DND) && defined(FEAT_GUI_GTK)) \
-	|| defined(FEAT_GUI_MSWIN) \
-	|| defined(FEAT_GUI_MAC) \
-	|| defined(PROTO)
+#if defined(HAVE_DROP_FILE) || defined(PROTO)
 
 static void gui_wingoto_xy(int x, int y);
 
@@ -5413,6 +5403,42 @@ gui_wingoto_xy(int x, int y)
 	if (wp != NULL && wp != curwin)
 	    win_goto(wp);
     }
+}
+
+/*
+ * Function passed to handle_drop() for the actions to be done after the
+ * argument list has been updated.
+ */
+    static void
+drop_callback(void *cookie)
+{
+    char_u	*p = cookie;
+
+    /* If Shift held down, change to first file's directory.  If the first
+     * item is a directory, change to that directory (and let the explorer
+     * plugin show the contents). */
+    if (p != NULL)
+    {
+	if (mch_isdir(p))
+	{
+	    if (mch_chdir((char *)p) == 0)
+		shorten_fnames(TRUE);
+	}
+	else if (vim_chdirfile(p, "drop") == OK)
+	    shorten_fnames(TRUE);
+	vim_free(p);
+    }
+
+    /* Update the screen display */
+    update_screen(NOT_VALID);
+# ifdef FEAT_MENU
+    gui_update_menus(0);
+# endif
+#ifdef FEAT_TITLE
+    maketitle();
+#endif
+    setcursor();
+    out_flush_cursor(FALSE, FALSE);
 }
 
 /*
@@ -5495,33 +5521,8 @@ gui_handle_drop(
 	    vim_free(fnames);
 	}
 	else
-	    handle_drop(count, fnames, (modifiers & MOUSE_CTRL) != 0);
-
-	/* If Shift held down, change to first file's directory.  If the first
-	 * item is a directory, change to that directory (and let the explorer
-	 * plugin show the contents). */
-	if (p != NULL)
-	{
-	    if (mch_isdir(p))
-	    {
-		if (mch_chdir((char *)p) == 0)
-		    shorten_fnames(TRUE);
-	    }
-	    else if (vim_chdirfile(p, "drop") == OK)
-		shorten_fnames(TRUE);
-	    vim_free(p);
-	}
-
-	/* Update the screen display */
-	update_screen(NOT_VALID);
-# ifdef FEAT_MENU
-	gui_update_menus(0);
-# endif
-#ifdef FEAT_TITLE
-	maketitle();
-#endif
-	setcursor();
-	out_flush_cursor(FALSE, FALSE);
+	    handle_drop(count, fnames, (modifiers & MOUSE_CTRL) != 0,
+		    drop_callback, (void *)p);
     }
 
     entered = FALSE;

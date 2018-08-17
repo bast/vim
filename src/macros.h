@@ -14,9 +14,9 @@
  */
 
 /*
- * PCHAR(lp, c) - put character 'c' at position 'lp'
+ * PBYTE(lp, c) - put byte 'c' at position 'lp'
  */
-#define PCHAR(lp, c) (*(ml_get_buf(curbuf, (lp).lnum, TRUE) + (lp).col) = (c))
+#define PBYTE(lp, c) (*(ml_get_buf(curbuf, (lp).lnum, TRUE) + (lp).col) = (c))
 
 /*
  * Position comparisons
@@ -230,16 +230,12 @@
 #endif
 
 #ifdef STARTUPTIME
-# define TIME_MSG(s) { if (time_fd != NULL) time_msg(s, NULL); }
+# define TIME_MSG(s) do { if (time_fd != NULL) time_msg(s, NULL); } while (0)
 #else
-# define TIME_MSG(s)
+# define TIME_MSG(s) do { /**/ } while (0)
 #endif
 
-#ifdef FEAT_VREPLACE
-# define REPLACE_NORMAL(s) (((s) & REPLACE_FLAG) && !((s) & VREPLACE_FLAG))
-#else
-# define REPLACE_NORMAL(s) ((s) & REPLACE_FLAG)
-#endif
+#define REPLACE_NORMAL(s) (((s) & REPLACE_FLAG) && !((s) & VREPLACE_FLAG))
 
 #ifdef FEAT_ARABIC
 # define UTF_COMPOSINGLIKE(p1, p2)  utf_composinglike((p1), (p2))
@@ -289,9 +285,9 @@
 #endif
 
 #ifdef FEAT_AUTOCHDIR
-# define DO_AUTOCHDIR if (p_acd) do_autochdir();
+# define DO_AUTOCHDIR do { if (p_acd) do_autochdir(); } while (0)
 #else
-# define DO_AUTOCHDIR
+# define DO_AUTOCHDIR do { /**/ } while (0)
 #endif
 
 #define RESET_BINDING(wp)  (wp)->w_p_scb = FALSE; (wp)->w_p_crb = FALSE

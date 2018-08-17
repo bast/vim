@@ -584,7 +584,7 @@ EX(CMD_for,		"for",		ex_while,
 			EXTRA|NOTRLCOM|SBOXOK|CMDWIN,
 			ADDR_LINES),
 EX(CMD_function,	"function",	ex_function,
-			EXTRA|BANG|CMDWIN,
+			EXTRA|BANG|SBOXOK|CMDWIN,
 			ADDR_LINES),
 EX(CMD_global,		"global",	ex_global,
 			RANGE|WHOLEFOLD|BANG|EXTRA|DFLALL|SBOXOK|CMDWIN,
@@ -1778,7 +1778,7 @@ struct exarg
     int		regname;	/* register name (NUL if none) */
     int		force_bin;	/* 0, FORCE_BIN or FORCE_NOBIN */
     int		read_edit;	/* ++edit argument */
-    int		force_ff;	/* ++ff= argument (index in cmd[]) */
+    int		force_ff;	/* ++ff= argument (first char of argument) */
 #ifdef FEAT_MBYTE
     int		force_enc;	/* ++enc= argument (index in cmd[]) */
     int		bad_char;	/* BAD_KEEP, BAD_DROP or replacement byte */
@@ -1791,6 +1791,12 @@ struct exarg
     void	*cookie;	/* argument for getline() */
 #ifdef FEAT_EVAL
     struct condstack *cstack;	/* condition stack for ":if" etc. */
+#endif
+    long	verbose_save;	 // saved value of p_verbose
+    int		save_msg_silent; // saved value of msg_silent
+    int		did_esilent;	 // how many times emsg_silent was incremented
+#ifdef HAVE_SANDBOX
+    int		did_sandbox;	// when TRUE did ++sandbox
 #endif
 };
 

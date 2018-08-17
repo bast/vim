@@ -101,15 +101,6 @@
  */
 
 /*
- * +listcmds		Vim commands for the buffer list and the argument
- *			list.  Without this there is no ":buffer" ":bnext",
- *			":bdel", ":argdelete", etc.
- */
-#ifdef FEAT_NORMAL
-# define FEAT_LISTCMDS
-#endif
-
-/*
  * +cmdhist		Command line history.
  */
 #ifdef FEAT_SMALL
@@ -213,13 +204,6 @@
  */
 #ifdef FEAT_NORMAL
 # define FEAT_VIRTUALEDIT
-#endif
-
-/*
- * +vreplace		"gR" and "gr" commands.
- */
-#ifdef FEAT_NORMAL
-# define FEAT_VREPLACE
 #endif
 
 /*
@@ -369,6 +353,10 @@
 # if defined(HAVE_STDINT_H) || defined(WIN3264) || (VIM_SIZEOF_LONG >= 8)
 #  define FEAT_NUM64
 # endif
+#endif
+
+#ifdef FEAT_EVAL
+# define HAVE_SANDBOX
 #endif
 
 /*
@@ -815,6 +803,13 @@
 #endif
 
 /*
+ * +vartabs		'vartabstop' and 'varsofttabstop' options.
+ */
+#ifdef FEAT_BIG
+# define FEAT_VARTABS
+#endif
+
+/*
  * Preferences:
  * ============
  */
@@ -1252,10 +1247,9 @@
 #endif
 
 /*
- * The Netbeans feature requires +listcmds and +eval.
+ * The Netbeans feature requires +eval.
  */
-#if (!defined(FEAT_LISTCMDS) || !defined(FEAT_EVAL)) \
-	&& defined(FEAT_NETBEANS_INTG)
+#if !defined(FEAT_EVAL) && defined(FEAT_NETBEANS_INTG)
 # undef FEAT_NETBEANS_INTG
 #endif
 

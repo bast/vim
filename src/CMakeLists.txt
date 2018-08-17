@@ -2,9 +2,9 @@
 # these could be extended to other vendors
 # and also localized to the scope of individual targets
 if(CMAKE_C_COMPILER_ID MATCHES GNU)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
-    set(CMAKE_C_FLAGS_RELEASE "-O2")
-    set(CMAKE_C_FLAGS_DEBUG "-O0")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1")
+  set(CMAKE_C_FLAGS_RELEASE "-O2")
+  set(CMAKE_C_FLAGS_DEBUG "-O0")
 endif()
 
 # generate config.h, pathdef.c, and osdef.h

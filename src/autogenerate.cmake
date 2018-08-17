@@ -8,7 +8,7 @@ function(generate_config_h)
   set(TERMINFO 1)
   set(UNIX 1)
 
-  # FIXME this is hardcoded to keep the discussion in the book chapter
+  # this is hardcoded to keep the discussion in the book chapter
   # which describes the migration to CMake simpler
   set(TIME_WITH_SYS_TIME 1)
   set(RETSIGTYPE void)

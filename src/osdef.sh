@@ -11,7 +11,15 @@
 #
 # 31.10.95 jw.
 
-target_directory=$1
+if [ $# -eq 0 ]
+  then
+    # there are no arguments
+    # assume the target directory is current directory
+    target_directory=$PWD
+  else
+    # target directory is provided as argument
+    target_directory=$1
+fi
 
 if test -z "$CC"; then
   CC=cc

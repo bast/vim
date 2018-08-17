@@ -92,7 +92,7 @@ function(generate_config_h)
 
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/config.h.cmake.in
-    ${CMAKE_CURRENT_LIST_DIR}/auto/config.h
+    ${CMAKE_CURRENT_BINARY_DIR}/auto/config.h
     @ONLY
     )
 endfunction()
@@ -122,7 +122,7 @@ function(generate_pathdef_c)
 
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/pathdef.c.in
-    ${CMAKE_CURRENT_LIST_DIR}/auto/pathdef.c
+    ${CMAKE_CURRENT_BINARY_DIR}/auto/pathdef.c
     @ONLY
     )
 endfunction()
@@ -131,7 +131,8 @@ function(generate_osdef_h)
   find_program(BASH_EXECUTABLE bash)
 
   execute_process(
-    COMMAND ${BASH_EXECUTABLE} osdef.sh
+    COMMAND
+      ${BASH_EXECUTABLE} osdef.sh ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_LIST_DIR}
     )

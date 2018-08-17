@@ -49,6 +49,7 @@ target_include_directories(
   PRIVATE
     ${PROJECT_SOURCE_DIR}/src/proto
     ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
   )
 
 target_compile_definitions(
@@ -85,6 +86,7 @@ target_include_directories(
   extra_sources
   PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/proto
+    ${CMAKE_CURRENT_BINARY_DIR}
   )
 
 target_compile_definitions(

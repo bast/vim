@@ -47,8 +47,8 @@ target_sources(
 target_include_directories(
   basic_sources
   PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/proto
-    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/proto
+    ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
   )
 

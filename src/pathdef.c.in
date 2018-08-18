@@ -1,0 +1,8 @@
+#include "vim.h"
+
+char_u *default_vim_dir = (char_u *)"@_default_vim_dir@";
+char_u *default_vimruntime_dir = (char_u *)"@_default_vimruntime_dir@";
+char_u *all_cflags = (char_u *)"@_all_cflags@";
+char_u *all_lflags = (char_u *)"@_all_lflags@";
+char_u *compiled_user = (char_u *)"@_compiled_user@";
+char_u *compiled_sys = (char_u *)"@_compiled_sys@";

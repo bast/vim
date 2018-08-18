@@ -1,0 +1,480 @@
+/*
+ * config.h.in.  Originally generated automatically from configure.ac by
+ * autoheader and manually changed after that.
+ */
+
+/* Define if we have EBCDIC code */
+#cmakedefine EBCDIC @EBCDIC@
+
+/* Define unless no X support found */
+#cmakedefine HAVE_X11 @HAVE_X11@
+
+/* Define when terminfo support found */
+#cmakedefine TERMINFO @TERMINFO@
+
+/* Define when termcap.h contains ospeed */
+#cmakedefine HAVE_OSPEED @HAVE_OSPEED@
+
+/* Define when ospeed can be extern */
+#cmakedefine OSPEED_EXTERN @OSPEED_EXTERN@
+
+/* Define when termcap.h contains UP, BC and PC */
+#cmakedefine HAVE_UP_BC_PC @HAVE_UP_BC_PC@
+
+/* Define when UP, BC and PC can be extern */
+#cmakedefine UP_BC_PC_EXTERN @UP_BC_PC_EXTERN@
+
+/* Define when termcap.h defines outfuntype */
+#cmakedefine HAVE_OUTFUNTYPE @HAVE_OUTFUNTYPE@
+
+/* Define when __DATE__ " " __TIME__ can be used */
+#cmakedefine HAVE_DATE_TIME @HAVE_DATE_TIME@
+
+/* Define when __attribute__((unused)) can be used */
+#cmakedefine HAVE_ATTRIBUTE_UNUSED @HAVE_ATTRIBUTE_UNUSED@
+
+/* defined always when using configure */
+#cmakedefine UNIX @UNIX@
+
+/* Defined to the size of an int */
+#cmakedefine VIM_SIZEOF_INT @VIM_SIZEOF_INT@
+
+/* Defined to the size of a long */
+#cmakedefine VIM_SIZEOF_LONG @VIM_SIZEOF_LONG@
+
+/* Defined to the size of off_t */
+#cmakedefine SIZEOF_OFF_T @SIZEOF_OFF_T@
+
+/* Defined to the size of time_t */
+#cmakedefine SIZEOF_TIME_T @SIZEOF_TIME_T@
+
+/* Define when wchar_t is only 2 bytes. */
+#cmakedefine SMALL_WCHAR_T @SMALL_WCHAR_T@
+
+/*
+ * If we cannot trust one of the following from the libraries, we use our
+ * own safe but probably slower vim_memmove().
+ */
+#cmakedefine USEBCOPY @USEBCOPY@
+#cmakedefine USEMEMMOVE @USEMEMMOVE@
+#cmakedefine USEMEMCPY @USEMEMCPY@
+
+/* Define when "man -s 2" is to be used */
+#cmakedefine USEMAN_S @USEMAN_S@
+
+/* Define to empty if the keyword does not work.  */
+#cmakedefine const @const@
+
+/* Define to empty if the keyword does not work.  */
+#cmakedefine volatile @volatile@
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#cmakedefine mode_t @mode_t@
+
+/* Define to `long' if <sys/types.h> doesn't define.  */
+#cmakedefine off_t @off_t@
+
+/* Define to `long' if <sys/types.h> doesn't define.  */
+#cmakedefine pid_t @pid_t@
+
+/* Define to `unsigned' if <sys/types.h> doesn't define.  */
+#cmakedefine size_t @size_t@
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#cmakedefine uid_t @uid_t@
+
+/* Define to `unsigned int' or other type that is 32 bit.  */
+#cmakedefine uint32_t @uint32_t@
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#cmakedefine gid_t @gid_t@
+
+/* Define to `long' if <sys/types.h> doesn't define.  */
+#cmakedefine ino_t @ino_t@
+
+/* Define to `unsigned' if <sys/types.h> doesn't define.  */
+#cmakedefine dev_t @dev_t@
+
+/* Define on big-endian machines */
+#cmakedefine WORDS_BIGENDIAN @WORDS_BIGENDIAN@
+
+/* Define to `unsigned long' if <sys/types.h> doesn't define.  */
+#cmakedefine rlim_t @rlim_t@
+
+/* Define to `struct sigaltstack' if <signal.h> doesn't define.  */
+#cmakedefine stack_t @stack_t@
+
+/* Define if stack_t has the ss_base field. */
+#cmakedefine HAVE_SS_BASE @HAVE_SS_BASE@
+
+/* Define if you can safely include both <sys/time.h> and <time.h>.  */
+#cmakedefine TIME_WITH_SYS_TIME @TIME_WITH_SYS_TIME@
+
+/* Define if you can safely include both <sys/time.h> and <sys/select.h>.  */
+#cmakedefine SYS_SELECT_WITH_SYS_TIME @SYS_SELECT_WITH_SYS_TIME@
+
+/* Define if you have /dev/ptc */
+#cmakedefine HAVE_DEV_PTC @HAVE_DEV_PTC@
+
+/* Define if you have Sys4 ptys */
+#cmakedefine HAVE_SVR4_PTYS @HAVE_SVR4_PTYS@
+
+/* Define to range of pty names to try */
+#cmakedefine PTYRANGE0 @PTYRANGE0@
+#cmakedefine PTYRANGE1 @PTYRANGE1@
+
+/* Define mode for pty */
+#cmakedefine PTYMODE @PTYMODE@
+
+/* Define group for pty */
+#cmakedefine PTYGROUP @PTYGROUP@
+
+/* Define as the return type of signal handlers (int or void).  */
+#cmakedefine RETSIGTYPE @RETSIGTYPE@
+
+/* Define as the command at the end of signal handlers ("" or "return 0;").  */
+#cmakedefine SIGRETURN @SIGRETURN@
+
+/* Define if struct sigcontext is present */
+#cmakedefine HAVE_SIGCONTEXT @HAVE_SIGCONTEXT@
+
+/* Define if touuper/tolower only work on lower/upercase characters */
+#cmakedefine BROKEN_TOUPPER @BROKEN_TOUPPER@
+
+/* Define if stat() ignores a trailing slash */
+#cmakedefine STAT_IGNORES_SLASH @STAT_IGNORES_SLASH@
+
+/* Define if tgetstr() has a second argument that is (char *) */
+#cmakedefine TGETSTR_CHAR_P @TGETSTR_CHAR_P@
+
+/* Define if tgetent() returns zero for an error */
+#cmakedefine01 TGETENT_ZERO_ERR
+
+/* Define if the getcwd() function should not be used.  */
+#cmakedefine BAD_GETCWD @BAD_GETCWD@
+
+/* Define if you the function: */
+#cmakedefine HAVE_FCHDIR @HAVE_FCHDIR@
+#cmakedefine HAVE_FCHOWN @HAVE_FCHOWN@
+#cmakedefine HAVE_FCHMOD @HAVE_FCHMOD@
+#cmakedefine HAVE_FLOAT_FUNCS @HAVE_FLOAT_FUNCS@
+#cmakedefine HAVE_FSEEKO @HAVE_FSEEKO@
+#cmakedefine HAVE_FSYNC @HAVE_FSYNC@
+#cmakedefine HAVE_FTRUNCATE @HAVE_FTRUNCATE@
+#cmakedefine HAVE_GETCWD @HAVE_GETCWD@
+#cmakedefine HAVE_GETPGID @HAVE_GETPGID@
+#cmakedefine HAVE_GETPSEUDOTTY @HAVE_GETPSEUDOTTY@
+#cmakedefine HAVE_GETPWENT @HAVE_GETPWENT@
+#cmakedefine HAVE_GETPWNAM @HAVE_GETPWNAM@
+#cmakedefine HAVE_GETPWUID @HAVE_GETPWUID@
+#cmakedefine HAVE_GETRLIMIT @HAVE_GETRLIMIT@
+#cmakedefine HAVE_GETTIMEOFDAY @HAVE_GETTIMEOFDAY@
+#cmakedefine HAVE_GETWD @HAVE_GETWD@
+#cmakedefine HAVE_ICONV @HAVE_ICONV@
+#cmakedefine HAVE_LSTAT @HAVE_LSTAT@
+#cmakedefine HAVE_MEMSET @HAVE_MEMSET@
+#cmakedefine HAVE_MKDTEMP @HAVE_MKDTEMP@
+#cmakedefine HAVE_NANOSLEEP @HAVE_NANOSLEEP@
+#cmakedefine HAVE_NL_LANGINFO_CODESET @HAVE_NL_LANGINFO_CODESET@
+#cmakedefine HAVE_OPENDIR @HAVE_OPENDIR@
+#cmakedefine HAVE_PUTENV @HAVE_PUTENV@
+#cmakedefine HAVE_QSORT @HAVE_QSORT@
+#cmakedefine HAVE_READLINK @HAVE_READLINK@
+#cmakedefine HAVE_RENAME @HAVE_RENAME@
+#cmakedefine HAVE_SELECT @HAVE_SELECT@
+#cmakedefine HAVE_SELINUX @HAVE_SELINUX@
+#cmakedefine HAVE_SETENV @HAVE_SETENV@
+#cmakedefine HAVE_SETPGID @HAVE_SETPGID@
+#cmakedefine HAVE_SETSID @HAVE_SETSID@
+#cmakedefine HAVE_SIGACTION @HAVE_SIGACTION@
+#cmakedefine HAVE_SIGALTSTACK @HAVE_SIGALTSTACK@
+#cmakedefine HAVE_SIGSET @HAVE_SIGSET@
+#cmakedefine HAVE_SIGSETJMP @HAVE_SIGSETJMP@
+#cmakedefine HAVE_SIGSTACK @HAVE_SIGSTACK@
+#cmakedefine HAVE_SIGPROCMASK @HAVE_SIGPROCMASK@
+#cmakedefine HAVE_SIGVEC @HAVE_SIGVEC@
+#cmakedefine HAVE_SMACK @HAVE_SMACK@
+#cmakedefine HAVE_STRCASECMP @HAVE_STRCASECMP@
+#cmakedefine HAVE_STRERROR @HAVE_STRERROR@
+#cmakedefine HAVE_STRFTIME @HAVE_STRFTIME@
+#cmakedefine HAVE_STRICMP @HAVE_STRICMP@
+#cmakedefine HAVE_STRNCASECMP @HAVE_STRNCASECMP@
+#cmakedefine HAVE_STRNICMP @HAVE_STRNICMP@
+#cmakedefine HAVE_STRPBRK @HAVE_STRPBRK@
+#cmakedefine HAVE_STRTOL @HAVE_STRTOL@
+#cmakedefine HAVE_ST_BLKSIZE @HAVE_ST_BLKSIZE@
+#cmakedefine HAVE_SYSCONF @HAVE_SYSCONF@
+#cmakedefine HAVE_SYSCTL @HAVE_SYSCTL@
+#cmakedefine HAVE_SYSINFO @HAVE_SYSINFO@
+#cmakedefine HAVE_SYSINFO_MEM_UNIT @HAVE_SYSINFO_MEM_UNIT@
+#cmakedefine HAVE_TGETENT @HAVE_TGETENT@
+#cmakedefine HAVE_TOWLOWER @HAVE_TOWLOWER@
+#cmakedefine HAVE_TOWUPPER @HAVE_TOWUPPER@
+#cmakedefine HAVE_ISWUPPER @HAVE_ISWUPPER@
+#cmakedefine HAVE_USLEEP @HAVE_USLEEP@
+#cmakedefine HAVE_UTIME @HAVE_UTIME@
+#cmakedefine HAVE_BIND_TEXTDOMAIN_CODESET @HAVE_BIND_TEXTDOMAIN_CODESET@
+#cmakedefine HAVE_MBLEN @HAVE_MBLEN@
+
+/* Define, if needed, for accessing large files. */
+#cmakedefine _LARGE_FILES @_LARGE_FILES@
+#cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
+#cmakedefine _LARGEFILE_SOURCE @_LARGEFILE_SOURCE@
+
+/* Define if you do not have utime(), but do have the utimes() function. */
+#cmakedefine HAVE_UTIMES @HAVE_UTIMES@
+
+/* Define if you have the header file: */
+#cmakedefine HAVE_DIRENT_H @HAVE_DIRENT_H@
+#cmakedefine HAVE_ERRNO_H @HAVE_ERRNO_H@
+#cmakedefine HAVE_FCNTL_H @HAVE_FCNTL_H@
+#cmakedefine HAVE_FRAME_H @HAVE_FRAME_H@
+#cmakedefine HAVE_ICONV_H @HAVE_ICONV_H@
+#cmakedefine HAVE_INTTYPES_H @HAVE_INTTYPES_H@
+#cmakedefine HAVE_LANGINFO_H @HAVE_LANGINFO_H@
+#cmakedefine HAVE_LIBC_H @HAVE_LIBC_H@
+#cmakedefine HAVE_LIBGEN_H @HAVE_LIBGEN_H@
+#cmakedefine HAVE_LIBINTL_H @HAVE_LIBINTL_H@
+#cmakedefine HAVE_LOCALE_H @HAVE_LOCALE_H@
+#cmakedefine HAVE_MATH_H @HAVE_MATH_H@
+#cmakedefine HAVE_NDIR_H @HAVE_NDIR_H@
+#cmakedefine HAVE_POLL_H @HAVE_POLL_H@
+#cmakedefine HAVE_PTHREAD_NP_H @HAVE_PTHREAD_NP_H@
+#cmakedefine HAVE_PWD_H @HAVE_PWD_H@
+#cmakedefine HAVE_SETJMP_H @HAVE_SETJMP_H@
+#cmakedefine HAVE_SGTTY_H @HAVE_SGTTY_H@
+#cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@
+#cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@
+#cmakedefine HAVE_STROPTS_H @HAVE_STROPTS_H@
+#cmakedefine HAVE_SYS_ACCESS_H @HAVE_SYS_ACCESS_H@
+#cmakedefine HAVE_SYS_ACL_H @HAVE_SYS_ACL_H@
+#cmakedefine HAVE_SYS_DIR_H @HAVE_SYS_DIR_H@
+#cmakedefine HAVE_SYS_IOCTL_H @HAVE_SYS_IOCTL_H@
+#cmakedefine HAVE_SYS_NDIR_H @HAVE_SYS_NDIR_H@
+#cmakedefine HAVE_SYS_PARAM_H @HAVE_SYS_PARAM_H@
+#cmakedefine HAVE_SYS_POLL_H @HAVE_SYS_POLL_H@
+#cmakedefine HAVE_SYS_PTEM_H @HAVE_SYS_PTEM_H@
+#cmakedefine HAVE_SYS_RESOURCE_H @HAVE_SYS_RESOURCE_H@
+#cmakedefine HAVE_SYS_SELECT_H @HAVE_SYS_SELECT_H@
+#cmakedefine HAVE_SYS_STATFS_H @HAVE_SYS_STATFS_H@
+#cmakedefine HAVE_SYS_STREAM_H @HAVE_SYS_STREAM_H@
+#cmakedefine HAVE_SYS_SYSCTL_H @HAVE_SYS_SYSCTL_H@
+#cmakedefine HAVE_SYS_SYSINFO_H @HAVE_SYS_SYSINFO_H@
+#cmakedefine HAVE_SYS_SYSTEMINFO_H @HAVE_SYS_SYSTEMINFO_H@
+#cmakedefine HAVE_SYS_TIME_H @HAVE_SYS_TIME_H@
+#cmakedefine HAVE_SYS_TYPES_H @HAVE_SYS_TYPES_H@
+#cmakedefine HAVE_SYS_UTSNAME_H @HAVE_SYS_UTSNAME_H@
+#cmakedefine HAVE_TERMCAP_H @HAVE_TERMCAP_H@
+#cmakedefine HAVE_TERMIOS_H @HAVE_TERMIOS_H@
+#cmakedefine HAVE_TERMIO_H @HAVE_TERMIO_H@
+#cmakedefine HAVE_WCHAR_H @HAVE_WCHAR_H@
+#cmakedefine HAVE_WCTYPE_H @HAVE_WCTYPE_H@
+#cmakedefine HAVE_UNISTD_H @HAVE_UNISTD_H@
+#cmakedefine HAVE_UTIL_DEBUG_H @HAVE_UTIL_DEBUG_H@
+#cmakedefine HAVE_UTIL_MSGI18N_H @HAVE_UTIL_MSGI18N_H@
+#cmakedefine HAVE_UTIME_H @HAVE_UTIME_H@
+#cmakedefine HAVE_X11_SUNKEYSYM_H @HAVE_X11_SUNKEYSYM_H@
+#cmakedefine HAVE_XM_XM_H @HAVE_XM_XM_H@
+#cmakedefine HAVE_XM_XPMP_H @HAVE_XM_XPMP_H@
+#cmakedefine HAVE_XM_TRAITP_H @HAVE_XM_TRAITP_H@
+#cmakedefine HAVE_XM_MANAGER_H @HAVE_XM_MANAGER_H@
+#cmakedefine HAVE_XM_UNHIGHLIGHTT_H @HAVE_XM_UNHIGHLIGHTT_H@
+#cmakedefine HAVE_XM_JOINSIDET_H @HAVE_XM_JOINSIDET_H@
+#cmakedefine HAVE_XM_NOTEBOOK_H @HAVE_XM_NOTEBOOK_H@
+#cmakedefine HAVE_X11_XPM_H @HAVE_X11_XPM_H@
+#cmakedefine HAVE_X11_XMU_EDITRES_H @HAVE_X11_XMU_EDITRES_H@
+#cmakedefine HAVE_X11_SM_SMLIB_H @HAVE_X11_SM_SMLIB_H@
+
+/* Define to the type of the XpmAttributes type. */
+#cmakedefine XPMATTRIBUTES_TYPE @XPMATTRIBUTES_TYPE@
+
+/* Define if you have <sys/wait.h> that is POSIX.1 compatible.  */
+#cmakedefine HAVE_SYS_WAIT_H @HAVE_SYS_WAIT_H@
+
+/* Define if you have a <sys/wait.h> that is not POSIX.1 compatible. */
+#cmakedefine HAVE_UNION_WAIT @HAVE_UNION_WAIT@
+
+/* This is currently unused in vim: */
+/* Define if you have the ANSI C header files. */
+#cmakedefine STDC_HEADERS @STDC_HEADERS@
+
+/* instead, we check a few STDC things ourselves */
+#cmakedefine HAVE_STDLIB_H @HAVE_STDLIB_H@
+#cmakedefine HAVE_STRING_H @HAVE_STRING_H@
+
+/* Define if strings.h cannot be included when strings.h already is */
+#cmakedefine NO_STRINGS_WITH_STRING_H @NO_STRINGS_WITH_STRING_H@
+
+/* Define if you want tiny features. */
+#cmakedefine FEAT_TINY @FEAT_TINY@
+
+/* Define if you want small features. */
+#cmakedefine FEAT_SMALL @FEAT_SMALL@
+
+/* Define if you want normal features. */
+#cmakedefine FEAT_NORMAL @FEAT_NORMAL@
+
+/* Define if you want big features. */
+#cmakedefine FEAT_BIG @FEAT_BIG@
+
+/* Define if you want huge features. */
+#cmakedefine FEAT_HUGE @FEAT_HUGE@
+
+/* Define if you want to include the Lua interpreter. */
+#cmakedefine FEAT_LUA @FEAT_LUA@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_LUA @DYNAMIC_LUA@
+
+/* Define if you want to include the MzScheme interpreter. */
+#cmakedefine FEAT_MZSCHEME @FEAT_MZSCHEME@
+
+/* Define if you want to include the Perl interpreter. */
+#cmakedefine FEAT_PERL @FEAT_PERL@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_PERL @DYNAMIC_PERL@
+
+/* Define if you want to include the Python interpreter. */
+#cmakedefine FEAT_PYTHON @FEAT_PYTHON@
+
+/* Define if you want to include the Python3 interpreter. */
+#cmakedefine FEAT_PYTHON3 @FEAT_PYTHON3@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_PYTHON @DYNAMIC_PYTHON@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_PYTHON3 @DYNAMIC_PYTHON3@
+
+/* Define if dynamic python does not require RTLD_GLOBAL */
+#cmakedefine PY_NO_RTLD_GLOBAL @PY_NO_RTLD_GLOBAL@
+
+/* Define if dynamic python3 does not require RTLD_GLOBAL */
+#cmakedefine PY3_NO_RTLD_GLOBAL @PY3_NO_RTLD_GLOBAL@
+
+/* Define if you want to include the Ruby interpreter. */
+#cmakedefine FEAT_RUBY @FEAT_RUBY@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_RUBY @DYNAMIC_RUBY@
+
+/* Define if you want to include the Tcl interpreter. */
+#cmakedefine FEAT_TCL @FEAT_TCL@
+
+/* Define for linking via dlopen() or LoadLibrary() */
+#cmakedefine DYNAMIC_TCL @DYNAMIC_TCL@
+
+/* Define if you want to add support for ACL */
+#cmakedefine HAVE_POSIX_ACL @HAVE_POSIX_ACL@
+#cmakedefine HAVE_SOLARIS_ZFS_ACL @HAVE_SOLARIS_ZFS_ACL@
+#cmakedefine HAVE_SOLARIS_ACL @HAVE_SOLARIS_ACL@
+#cmakedefine HAVE_AIX_ACL @HAVE_AIX_ACL@
+
+/* Define if pango_shape_full() is available. */
+#cmakedefine HAVE_PANGO_SHAPE_FULL @HAVE_PANGO_SHAPE_FULL@
+
+/* Define if you want to add support of GPM (Linux console mouse daemon) */
+#cmakedefine HAVE_GPM @HAVE_GPM@
+
+/* Define if you want to add support of sysmouse (*BSD console mouse) */
+#cmakedefine HAVE_SYSMOUSE @HAVE_SYSMOUSE@
+
+/* Define if you want to include the Cscope interface. */
+#cmakedefine FEAT_CSCOPE @FEAT_CSCOPE@
+
+/* Define if you want to include multibyte support. */
+#cmakedefine FEAT_MBYTE @FEAT_MBYTE@
+
+/* Define if you want to always define a server name at vim startup. */
+#cmakedefine FEAT_AUTOSERVERNAME @FEAT_AUTOSERVERNAME@
+
+/* Define if you want to include fontset support. */
+#cmakedefine FEAT_XFONTSET @FEAT_XFONTSET@
+
+/* Define if you want to include XIM support. */
+#cmakedefine FEAT_XIM @FEAT_XIM@
+
+/* Define if you want to include Hangul input support. */
+#cmakedefine FEAT_HANGULIN @FEAT_HANGULIN@
+
+/* Define if you use GTK and want GNOME support. */
+#cmakedefine FEAT_GUI_GNOME @FEAT_GUI_GNOME@
+
+/* Define if you use KDE and want KDE Toolbar support. */
+#cmakedefine FEAT_KDETOOLBAR @FEAT_KDETOOLBAR@
+
+/* Define if your X has own locale library */
+#cmakedefine X_LOCALE @X_LOCALE@
+
+/* Define if we have dlfcn.h. */
+#cmakedefine HAVE_DLFCN_H @HAVE_DLFCN_H@
+
+/* Define if there is a working gettext(). */
+#cmakedefine HAVE_GETTEXT @HAVE_GETTEXT@
+
+/* Define if _nl_msg_cat_cntr is present. */
+#cmakedefine HAVE_NL_MSG_CAT_CNTR @HAVE_NL_MSG_CAT_CNTR@
+
+/* Define if we have dlopen() */
+#cmakedefine HAVE_DLOPEN @HAVE_DLOPEN@
+
+/* Define if we have dlsym() */
+#cmakedefine HAVE_DLSYM @HAVE_DLSYM@
+
+/* Define if we have dl.h. */
+#cmakedefine HAVE_DL_H @HAVE_DL_H@
+
+/* Define if we have shl_load() */
+#cmakedefine HAVE_SHL_LOAD @HAVE_SHL_LOAD@
+
+/* Define if you want to include Sun Visual Workshop support. */
+#cmakedefine FEAT_SUN_WORKSHOP @FEAT_SUN_WORKSHOP@
+
+/* Define if you want to include NetBeans integration. */
+#cmakedefine FEAT_NETBEANS_INTG @FEAT_NETBEANS_INTG@
+
+/* Define if you want to include process communication. */
+#cmakedefine FEAT_JOB_CHANNEL @FEAT_JOB_CHANNEL@
+
+/* Define if you want to include terminal emulator support. */
+#cmakedefine FEAT_TERMINAL @FEAT_TERMINAL@
+
+/* Define default global runtime path */
+#cmakedefine RUNTIME_GLOBAL @RUNTIME_GLOBAL@
+
+/* Define name of who modified a released Vim */
+#cmakedefine MODIFIED_BY @MODIFIED_BY@
+
+/* Define if you want XSMP interaction as well as vanilla swapfile safety */
+#cmakedefine USE_XSMP_INTERACT @USE_XSMP_INTERACT@
+
+/* Define if fcntl()'s F_SETFD command knows about FD_CLOEXEC */
+#cmakedefine HAVE_FD_CLOEXEC @HAVE_FD_CLOEXEC@
+
+/* Define if /proc/self/exe or similar can be read */
+#cmakedefine PROC_EXE_LINK "@PROC_EXE_LINK@"
+
+/* Define if you want Cygwin to use the WIN32 clipboard, not compatible with X11*/
+#cmakedefine FEAT_CYGWIN_WIN32_CLIPBOARD @FEAT_CYGWIN_WIN32_CLIPBOARD@
+
+/* Define if we have AvailabilityMacros.h on Mac OS X */
+#cmakedefine HAVE_AVAILABILITYMACROS_H @HAVE_AVAILABILITYMACROS_H@
+
+/* Define if Xutf8SetWMProperties() is in an X library. */
+#cmakedefine HAVE_XUTF8SETWMPROPERTIES @HAVE_XUTF8SETWMPROPERTIES@
+
+/* Define if GResource is used to load icons */
+#cmakedefine USE_GRESOURCE @USE_GRESOURCE@
+
+/* Define if GTK+ GUI is to be linked against GTK+ 3 */
+#cmakedefine USE_GTK3 @USE_GTK3@
+
+/* Define if we have isinf() */
+#cmakedefine HAVE_ISINF @HAVE_ISINF@
+
+/* Define if we have isnan() */
+#cmakedefine HAVE_ISNAN @HAVE_ISNAN@
+
+/* Define to inline symbol or empty */
+#cmakedefine inline @inline@

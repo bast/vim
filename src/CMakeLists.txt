@@ -13,21 +13,18 @@ generate_config_h()
 generate_pathdef_c()
 generate_osdef_h()
 
-add_executable(
-  vim
+add_executable(vim
   main.c
   )
 
-target_compile_definitions(
-  vim
+target_compile_definitions(vim
   PRIVATE
     "HAVE_CONFIG_H"
   )
 
 add_library(basic_sources "")
 
-target_sources(
-  basic_sources
+target_sources(basic_sources
   PRIVATE
     arabic.c beval.c blowfish.c buffer.c charset.c
     crypt.c crypt_zip.c dict.c diff.c digraph.c
@@ -44,22 +41,19 @@ target_sources(
     window.c
   )
 
-target_include_directories(
-  basic_sources
+target_include_directories(basic_sources
   PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/proto
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
   )
 
-target_compile_definitions(
-  basic_sources
+target_compile_definitions(basic_sources
   PRIVATE
     "HAVE_CONFIG_H"
   )
 
-target_link_libraries(
-  vim
+target_link_libraries(vim
   PUBLIC
     basic_sources
   )
@@ -67,36 +61,31 @@ target_link_libraries(
 add_library(extra_sources "")
 
 if(ENABLE_NETBEANS)
-  target_sources(
-    extra_sources
+  target_sources(extra_sources
     PRIVATE
       netbeans.c
     )
 endif()
 
 if(ENABLE_CHANNEL)
-  target_sources(
-    extra_sources
+  target_sources(extra_sources
     PRIVATE
       channel.c
     )
 endif()
 
-target_include_directories(
-  extra_sources
+target_include_directories(extra_sources
   PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/proto
     ${CMAKE_CURRENT_BINARY_DIR}
   )
 
-target_compile_definitions(
-  extra_sources
+target_compile_definitions(extra_sources
   PRIVATE
     "HAVE_CONFIG_H"
   )
 
-target_link_libraries(
-  vim
+target_link_libraries(vim
   PUBLIC
     extra_sources
   )
@@ -104,8 +93,7 @@ target_link_libraries(
 if(ENABLE_TERMINAL)
   add_subdirectory(libvterm)
 
-  target_link_libraries(
-    vim
+  target_link_libraries(vim
     PUBLIC
       libvterm
     )
@@ -114,8 +102,7 @@ endif()
 # find X11 and link to it
 find_package(X11 REQUIRED)
 if(X11_FOUND)
-  target_link_libraries(
-    vim
+  target_link_libraries(vim
     PUBLIC
       ${X11_LIBRARIES}
     )
@@ -125,8 +112,7 @@ endif()
 foreach(_library IN ITEMS Xt SM m tinfo acl gpm dl)
   find_library(_${_library}_found ${_library} REQUIRED)
   if(_${_library}_found)
-    target_link_libraries(
-      vim
+    target_link_libraries(vim
       PUBLIC
         ${_library}
   )

@@ -115,7 +115,7 @@ foreach(_library IN ITEMS Xt SM m tinfo acl gpm dl)
     target_link_libraries(vim
       PUBLIC
         ${_library}
-  )
+      )
   endif()
 endforeach()
 

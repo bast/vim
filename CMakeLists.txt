@@ -6,7 +6,7 @@ project(vim LANGUAGES C)
 
 # default to release mode
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
 # use install directory variables as defined for gnu software
@@ -21,12 +21,14 @@ option(ENABLE_CHANNEL "Enable channel" ON)
 option(ENABLE_TERMINAL "Enable terminal" ON)
 
 # if no features are set, default to "huge"
-set(FEATURES "huge" CACHE STRING
-  "FEATURES chosen by the user at CMake configure time")
+if(NOT FEATURES)
+  set(FEATURES "huge" CACHE STRING
+    "FEATURES chosen by the user at CMake configure time")
+endif()
 
 # make sure the selected features is a valid choice
-set(_available_features "tiny" "small" "normal" "big" "huge")
-if(NOT "${FEATURES}" IN_LIST _available_features)
+list(APPEND _available_features "tiny" "small" "normal" "big" "huge")
+if(NOT FEATURES IN_LIST _available_features)
   message(FATAL_ERROR "Unknown features: \"${FEATURES}\". Allowed values are: ${_available_features}.")
 endif()
 set_property(CACHE FEATURES PROPERTY STRINGS ${_available_features})
